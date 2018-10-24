@@ -46,7 +46,7 @@ func (c *Client) write() {
             return
         }
 
-        log.Println(string(msg))
+        //log.Println(string(msg))
 
         c.socket.WriteMessage(websocket.TextMessage, msg)
     }
@@ -57,9 +57,6 @@ type ClientManager struct {
     register    chan *Client
     unregister  chan *Client
     broadcast   chan []byte
-}
-
-type Message struct {
 }
 
 func (manager *ClientManager) start() {
@@ -82,25 +79,27 @@ func (manager *ClientManager) start() {
 
 var manager ClientManager
 
-func init() {
-    manager = ClientManager{
+var mbus MBusClient
+
+func WsServerStart(port int) {
+    // starting
+    log.Println("Starting WebSocket server listener")
+
+    manager = ClientManager {
         clients:    make(map[*Client]bool),
         register:   make(chan *Client),
         unregister: make(chan *Client),
         broadcast:  make(chan []byte),
     }
-}
 
-func main() {
-    // starting
-    log.Println("Starting HTTP listener")
+    mbus = NewClient("ws")
 
     http.HandleFunc("/", mainHandler)
 
     go manager.start()
 
     // listening
-    log.Println("HTTP listening on port 9999")
+    log.Printf("WebSocket server listening on port %d", port)
 
     go func() {
         timer := time.NewTicker(time.Second)
@@ -114,6 +113,13 @@ func main() {
                         s := strconv.Itoa(money)
                         b := []byte(s)
                         k.sending <- b[:len(b)]
+
+                        //test part
+                        s, ok := mbus.Get()
+                        if ok {
+                            b = []byte(s)
+                            k.sending <- b[:len(b)]
+                        }
                     }
 
                     money += 100
@@ -122,7 +128,7 @@ func main() {
         }
     }()
 
-    http.ListenAndServe(":9999", nil)
+    go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
