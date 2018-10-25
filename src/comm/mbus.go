@@ -15,19 +15,19 @@ func init() {
     chans = make(map[string]chan string)
 }
 
-type MBusClient struct {
+type MBusNode struct {
     cid int
     name string
 }
 
-func NewClient(name string) MBusClient {
+func NewMBusNode(name string) MBusNode {
     new_id := generator()
-
     chans[name] = make(chan string, 100)
-    return MBusClient { new_id, name }
+
+    return MBusNode { new_id, name }
 }
 
-func (c MBusClient) Get() (string, bool) {
+func (c MBusNode) Get() (string, bool) {
     select {
     case msg := <-chans[c.name]:
         return msg, true
@@ -36,8 +36,9 @@ func (c MBusClient) Get() (string, bool) {
     }
 }
 
-func (c MBusClient) Put(dst string, msg string) (ok bool) {
+func (c MBusNode) Put(dst string, msg string) (ok bool) {
     dstchan, ok := chans[dst]
+
     if ok {
         dstchan <- msg
     }

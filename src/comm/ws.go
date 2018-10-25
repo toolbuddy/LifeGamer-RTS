@@ -10,12 +10,15 @@ import (
     "time"
 )
 
-type Client struct {
+var manager WsClientManager
+var mbus MBusNode
+
+type WsClient struct {
     socket  *websocket.Conn
     sending chan []byte
 }
 
-func (c *Client) read() {
+func (c *WsClient) read() {
     defer func() {
         manager.unregister <- c
         c.socket.Close()
@@ -29,11 +32,11 @@ func (c *Client) read() {
             return
         }
 
-        fmt.Printf("%v\n", string(msg))
+        fmt.Printf(">> %s\n", string(msg))
     }
 }
 
-func (c *Client) write() {
+func (c *WsClient) write() {
     defer func() {
         c.socket.Close()
     }()
@@ -46,20 +49,18 @@ func (c *Client) write() {
             return
         }
 
-        //log.Println(string(msg))
-
         c.socket.WriteMessage(websocket.TextMessage, msg)
     }
 }
 
-type ClientManager struct {
-    clients     map[*Client]bool
-    register    chan *Client
-    unregister  chan *Client
+type WsClientManager struct {
+    clients     map[*WsClient]bool
+    register    chan *WsClient
+    unregister  chan *WsClient
     broadcast   chan []byte
 }
 
-func (manager *ClientManager) start() {
+func (manager *WsClientManager) start() {
     for {
         select {
         case c := <-manager.register:
@@ -77,63 +78,32 @@ func (manager *ClientManager) start() {
     }
 }
 
-var manager ClientManager
-
-var mbus MBusClient
-
 func WsServerStart(port int) {
     // starting
-    log.Println("Starting WebSocket server listener")
+    log.Println("Starting Websocket server listener")
 
-    manager = ClientManager {
-        clients:    make(map[*Client]bool),
-        register:   make(chan *Client),
-        unregister: make(chan *Client),
+    manager = WsClientManager {
+        clients:    make(map[*WsClient]bool),
+        register:   make(chan *WsClient),
+        unregister: make(chan *WsClient),
         broadcast:  make(chan []byte),
     }
 
-    mbus = NewClient("ws")
+    go manager.start()
+
+    mbus = NewMBusNode("ws")
 
     http.HandleFunc("/", mainHandler)
 
-    go manager.start()
-
     // listening
-    log.Printf("WebSocket server listening on port %d", port)
-
-    go func() {
-        timer := time.NewTicker(time.Second)
-        defer timer.Stop()
-
-        for money := 0;; {
-            select {
-            case <-timer.C:
-                if len(manager.clients) != 0 {
-                    for k, _  := range manager.clients {
-                        s := strconv.Itoa(money)
-                        b := []byte(s)
-                        k.sending <- b[:len(b)]
-
-                        //test part
-                        s, ok := mbus.Get()
-                        if ok {
-                            b = []byte(s)
-                            k.sending <- b[:len(b)]
-                        }
-                    }
-
-                    money += 100
-                }
-            }
-        }
-    }()
+    log.Printf("Websocket server listening on port %d", port)
 
     go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
     if b, err := ioutil.ReadAll(r.Body); err == nil {
-        fmt.Printf("%s\n", b)
+        fmt.Printf(">> %s\n", b)
     } else {
         log.Println(err)
         return
@@ -147,7 +117,7 @@ func mainHandler(w http.ResponseWriter, r *http.Request) {
         return
     }
 
-    client := &Client{socket: conn, sending: make(chan []byte)}
+    client := &WsClient{socket: conn, sending: make(chan []byte)}
 
     manager.register <- client
 
