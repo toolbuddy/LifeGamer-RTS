@@ -6,8 +6,6 @@ import (
     "io/ioutil"
     "fmt"
     "github.com/gorilla/websocket"
-    "strconv"
-    "time"
 )
 
 var manager WsClientManager
