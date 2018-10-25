@@ -8,8 +8,8 @@ import (
 )
 
 func main() {
+    mbus := comm.NewMBusNode("main")
     comm.WsServerStart(9999)
-    mbus := comm.NewClient("main")
     reader := bufio.NewReader(os.Stdin)
 
     for {
