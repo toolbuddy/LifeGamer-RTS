@@ -1,4 +1,4 @@
-package player
+package comm
 
 import (
     "errors"
