@@ -1,14 +1,13 @@
 package player
 
 import (
-    "util"
+    "game/util"
     "github.com/syndtr/goleveldb/leveldb"
     "encoding/gob"
     "bytes"
 )
 
 type Player struct {
-    Id string       // student id
     Human int
     Money int
     Power int

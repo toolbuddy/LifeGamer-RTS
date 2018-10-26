@@ -1,8 +1,8 @@
 package structure
 
 import (
-    "util"
-    "world"
+    "game/util"
+    "game/world"
 )
 
 type Structure struct {

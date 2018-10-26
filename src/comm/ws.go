@@ -3,7 +3,6 @@ package comm
 import (
     "log"
     "net/http"
-    "io/ioutil"
     "fmt"
     "github.com/gorilla/websocket"
 )
@@ -12,66 +11,23 @@ var manager WsClientManager
 var mbus MBusNode
 
 type WsClient struct {
+    username string
     socket  *websocket.Conn
-    sending chan []byte
 }
 
-func (c *WsClient) read() {
-    defer func() {
-        manager.unregister <- c
-        c.socket.Close()
-    }()
-
-    for {
-        _, msg, err := c.socket.ReadMessage()
-
-        if err != nil {
-            log.Println(err)
-            return
-        }
-
-        fmt.Printf(">> %s\n", string(msg))
-    }
-}
-
-func (c *WsClient) write() {
-    defer func() {
-        c.socket.Close()
-    }()
-
-    for {
-        msg, ok := <-c.sending
-
-        if !ok {
-            c.socket.WriteMessage(websocket.CloseMessage, []byte{})
-            return
-        }
-
-        c.socket.WriteMessage(websocket.TextMessage, msg)
-    }
-}
+// TODO: add read/write
 
 type WsClientManager struct {
-    clients     map[*WsClient]bool
+    clients     map[string]*WsClient
     register    chan *WsClient
-    unregister  chan *WsClient
-    broadcast   chan []byte
 }
 
 func (manager *WsClientManager) start() {
     for {
         select {
         case c := <-manager.register:
-            manager.clients[c] = true
-        case c := <-manager.unregister:
-            if _, ok := manager.clients[c]; ok {
-                close(c.sending)
-                delete(manager.clients, c)
-            }
-        case msg := <-manager.broadcast:
-            for k, _ := range manager.clients {
-                k.sending <- msg[:len(msg)]
-            }
+            manager.clients[c.username] = c
+            // TODO: send username to browser
         }
     }
 }
@@ -81,10 +37,8 @@ func WsServerStart(port int) {
     log.Println("Starting Websocket server listener")
 
     manager = WsClientManager {
-        clients:    make(map[*WsClient]bool),
+        clients:    make(map[string]*WsClient),
         register:   make(chan *WsClient),
-        unregister: make(chan *WsClient),
-        broadcast:  make(chan []byte),
     }
 
     go manager.start()
@@ -100,25 +54,29 @@ func WsServerStart(port int) {
 }
 
 func mainHandler(w http.ResponseWriter, r *http.Request) {
-    if b, err := ioutil.ReadAll(r.Body); err == nil {
-        fmt.Printf(">> %s\n", b)
-    } else {
-        log.Println(err)
-        return
-    }
-
-    upgrader := websocket.Upgrader{CheckOrigin: func(r *http.Request) bool { return true }}
-    conn, err := (&upgrader).Upgrade(w, r, nil)
+    upgrader := websocket.Upgrader { CheckOrigin: func(r *http.Request) bool { return true } }
+    conn, err := upgrader.Upgrade(w, r, nil)
 
     if err != nil {
         log.Println(err)
         return
     }
 
-    client := &WsClient{socket: conn, sending: make(chan []byte)}
+    // assume token is a string, not json
+    // TODO: use ReadJSON
+    _, token, err:= conn.ReadMessage()
 
-    manager.register <- client
+    if err != nil {
+        log.Println(err)
+        return
+    }
 
-    go client.read()
-    go client.write()
+    username, err := Login(string(token))
+
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    manager.register <- &WsClient { username: username, socket: conn }
 }
