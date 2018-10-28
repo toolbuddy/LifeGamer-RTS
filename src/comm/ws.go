@@ -5,18 +5,22 @@ import (
     "log"
     "net/http"
     "github.com/gorilla/websocket"
+    "encoding/json"
+    "reflect"
 )
 
 // Struct to store connected client
 type WsClient struct {
+    *websocket.Conn
+
     Username string
-    Socket  *websocket.Conn
 }
 
 // Struct for websocket server
 type WsServer struct {
     clients     map[string] []*WsClient // map username to actual ws connection
-    reg_queue   chan *WsClient          // ws clients to be register
+    reg_queue   chan *WsClient          // ws clients to be registered
+    unreg_queue chan *WsClient          // ws clients to be unregistered
     mbus        MBusNode
 }
 
@@ -66,25 +70,34 @@ func (server *WsServer) Start(port int) {
             return
         }
 
-        server.reg_queue <- &WsClient { Username: username, Socket: conn }
+        server.reg_queue <- &WsClient { conn, username }
     })
 
     // listening
     log.Printf("Websocket server listening on port %d", port)
     go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
-    // Handle message from MBus
+    // Handle message from MBus ( WsClient write )
     go func() {
         for m := range server.mbus.ReaderChan {
-            switch msg := m.(type) {
-            case BasePayload:
-                fmt.Println(msg.Username)
-            case PlayerDataPayload:
-                fmt.Println(msg.Human)
-            case MapDataPayload:
+            b, err := json.Marshal(m)
+
+            if err != nil {
+                log.Println(err)
                 continue
-            case BuildPayload:
-                continue
+            }
+
+            username := reflect.ValueOf(m).FieldByName("Username").String()
+            user_conns, ok := server.clients[username]
+
+            if ok {
+                for _, c := range user_conns {
+                    if err := c.WriteMessage(websocket.TextMessage, b); err != nil {
+                        if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+                            log.Println(err)
+                        }
+                    }
+                }
             }
         }
     }()
@@ -92,7 +105,7 @@ func (server *WsServer) Start(port int) {
     go func() {
         for {
             select {
-                case c := <-server.reg_queue:  // New client to register
+            case c := <-server.reg_queue:   // register
                 // Append new client into channel list
                 user_conns, ok := server.clients[c.Username]
                 if ok {
@@ -101,11 +114,64 @@ func (server *WsServer) Start(port int) {
                     server.clients[c.Username] = []*WsClient { c }
                 }
 
-                // TODO: Start goroutine to handle massage from each websocket client
+                // Start goroutine to handle massage from each websocket client ( WsClient read )
+                go func() {
+                    for {
+                        _, msg, err := c.ReadMessage()
+
+                        if err != nil {
+                            if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+                                log.Println(err)
+                            }
+
+                            c.Close()
+                            server.unreg_queue <- c
+
+                            return
+                        }
+
+                        var base BasePayload
+
+                        if err := json.Unmarshal(msg, &base); err != nil {
+                            log.Println(err)
+                            continue
+                        }
+
+                        switch base.Msg_type {
+                        case PlayerData:
+                            var data PlayerDataPayload
+
+                            if err := json.Unmarshal(msg, &data); err != nil {
+                                log.Println(err)
+                                continue
+                            }
+
+                            server.mbus.Write("game", data)
+
+                        case MapData:
+                            var data MapDataPayload
+
+                            if err := json.Unmarshal(msg, &data); err != nil {
+                                log.Println(err)
+                                continue
+                            }
+
+                            server.mbus.Write("game", data)
+                        }
+                    }
+                }()
 
                 // Send username to browser
-                c.Socket.WriteJSON( BasePayload { Msg_type: LoginResult, Username: c.Username, Msg: "Login Successful" } )
-                // TODO: unregister
+                c.WriteJSON( BasePayload { Msg_type: LoginResult, Username: c.Username, Msg: "Login Successful" } )
+
+            case c := <-server.unreg_queue: // unregister
+                if user_conns, ok := server.clients[c.Username]; ok {
+                    for i, conn := range user_conns {
+                        if conn == c {
+                            server.clients[c.Username] = append(user_conns[:i], user_conns[i+1:]...)
+                        }
+                    }
+                }
             }
         }
     }()

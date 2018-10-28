@@ -8,14 +8,15 @@ import (
 )
 
 func main() {
-    mbus := comm.NewMBusNode("main")
-    comm.WsServerStart(9999)
+    mbus, _ := comm.NewMBusNode("main")
     reader := bufio.NewReader(os.Stdin)
+    server, _ := comm.NewWsServer()
+
+    server.Start(9999)
 
     for {
         fmt.Print("Enter text: ")
         text, _ := reader.ReadString('\n')
-        //fmt.Println(text)
-        mbus.Put("ws", text)
+        mbus.Write("ws", comm.BasePayload { comm.PlayerData, "HMKRL", text })
     }
 }
