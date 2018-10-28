@@ -13,7 +13,8 @@ type gitlab_user struct {
     Message string
 }
 
-// Login with GitLab access token
+// Login with GitLab token
+// TODO: Support Private token and Access token
 func Login(token string) (string, error) {
     client := &http.Client{}
 
@@ -23,7 +24,8 @@ func Login(token string) (string, error) {
         return "", err
     }
 
-    // TODO: change to "Access-Token" for OAuth (current use private token for test)
+    // Set access token type
+    // TODO: Support Private token and Access token
     req.Header.Set("Private-Token", token)
 
     rsp, err := client.Do(req)

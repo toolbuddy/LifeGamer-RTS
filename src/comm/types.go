@@ -7,13 +7,15 @@ import (
 type MsgType uint // request from browser
 
 const (
-    PlayerData MsgType = iota
+    LoginResult MsgType = iota
+    PlayerData
     MapData
 )
 
 type BasePayload struct {
     Msg_type MsgType
     Username string
+    Msg string
 }
 
 type PlayerDataPayload struct {
