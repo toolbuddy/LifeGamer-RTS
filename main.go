@@ -5,6 +5,7 @@ import (
     "bufio"
     "fmt"
     "os"
+    "encoding/json"
 )
 
 func main() {
@@ -16,7 +17,8 @@ func main() {
 
     for {
         fmt.Print("Enter text: ")
-        text, _ := reader.ReadString('\n')
-        mbus.Write("ws", comm.BasePayload { comm.PlayerData, "HMKRL", text })
+        msg, _ := reader.ReadString('\n')
+        b, _ := json.Marshal(comm.Payload { comm.PlayerDataResponse, "HMKRL", msg })
+        mbus.Write("wss", b)
     }
 }

@@ -1,42 +1,30 @@
 package comm
 
 import (
-    "game/util"
 )
 
-type MsgType uint // request from browser
+type MsgType uint // message type
 
 const (
-    LoginResult MsgType = iota
-    PlayerData
-    MapData
+    LoginRequest MsgType = iota
+    PlayerDataRequest
+    MapDataRequest
+
+    LoginResponse
+    PlayerDataResponse
+    MapDataResponse
 )
 
-type BasePayload struct {
+type Payload struct {
     Msg_type MsgType
     Username string
-    Msg string
+    Message  string
 }
 
 type PlayerDataPayload struct {
-    BasePayload
+    Payload
 
     Human int
     Money int
     Power int
-}
-
-type MapDataPayload struct {
-    BasePayload
-
-    Chunk util.Point
-    // TODO: add map data ...
-}
-
-type BuildPayload struct {
-    BasePayload
-
-    Chunk util.Point
-    Pos util.Point
-    // TODO: add structure type ...
 }

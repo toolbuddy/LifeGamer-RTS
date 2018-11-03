@@ -5,7 +5,7 @@ import (
 )
 
 var generator (func() int)
-var chans map[string]chan interface{}
+var chans map[string]chan []byte
 
 func init() {
     // cid generator
@@ -17,34 +17,32 @@ func init() {
         }
     }()
 
-    chans = make(map[string]chan interface{})
+    chans = make(map[string]chan []byte)
 }
 
 type MBusNode struct {
     cid int
     name string
-    ReaderChan <-chan interface{}
+    ReaderChan <-chan []byte
 }
 
-func NewMBusNode(name string) (MBusNode, error) {
-    var newnode MBusNode
-
+func NewMBusNode(name string) (node *MBusNode, err error) {
     // Check node not exist
-    _, ok := chans[name]
-    if ok {
-        return newnode, errors.New("Node already exist")
+    if _, ok := chans[name]; ok {
+        err = errors.New("Node already exist")
+        return
     }
 
     new_id := generator()
-    chans[name] = make(chan interface{}, 256)
+    chans[name] = make(chan []byte, 256)
 
-    newnode = MBusNode { new_id, name, chans[name] }
+    node = &MBusNode { new_id, name, chans[name] }
 
-    return newnode, nil
+    return
 }
 
 // Read single message from MBus
-func (c MBusNode) Read() interface{} {
+func (c MBusNode) Read() []byte {
     select {
     case msg := <-chans[c.name]:
         return msg
@@ -54,7 +52,7 @@ func (c MBusNode) Read() interface{} {
 }
 
 // Write message to node 'dst', return false if no such node
-func (c MBusNode) Write(dst string, msg interface{}) (ok bool) {
+func (c MBusNode) Write(dst string, msg []byte) (ok bool) {
     dstchan, ok := chans[dst]
 
     if ok {
