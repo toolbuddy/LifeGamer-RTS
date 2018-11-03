@@ -1,7 +1,7 @@
 package structure
 
 import (
-    "game/util"
+    "util"
     "game/world"
 )
 

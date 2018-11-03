@@ -1,7 +1,7 @@
 package player
 
 import (
-    "game/util"
+    "util"
     "github.com/syndtr/goleveldb/leveldb"
     "encoding/gob"
     "bytes"
@@ -12,6 +12,7 @@ type Player struct {
     Money int
     Power int
     Home util.Point // spawn point
+    Initialized bool
 }
 
 type PlayerDB struct {

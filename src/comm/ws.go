@@ -28,7 +28,7 @@ func NewWsServer() (server *WsServer, err error) {
     clients     := make(map[string] []*WsClient)
     reg_queue   := make(chan *WsClient)
     unreg_queue := make(chan *WsClient)
-    mbus, err   := NewMBusNode("wss")
+    mbus, err   := NewMBusNode("ws")
 
     if err != nil {
         return
@@ -139,7 +139,13 @@ func (server *WsServer) Start(port int) {
                 }()
 
                 // Send username to browser
-                conn.WriteJSON( Payload { Msg_type: LoginResponse, Username: username, Message: "Login Successful" } )
+                conn.WriteJSON( Payload { LoginResponse, username, "Login Successful" } )
+
+                if b, err := json.Marshal( Payload { Msg_type: PlayerDataRequest, Username: username } ); err != nil {
+                    log.Println(err)
+                } else {
+                    server.mbus.Write("game", b)
+                }
 
             case conn := <-server.unreg_queue: // unregister
                 username := conn.Username
