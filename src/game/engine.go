@@ -6,31 +6,31 @@ import (
 )
 
 type GameEngine struct {
-    online_players  []player.Player
     playerDB        *player.PlayerDB
     handler         *MessageHandler
     mbus            *comm.MBusNode
 }
 
 func NewGameEngine() (engine *GameEngine, err error) {
-    online_players = []player.Player {  }
 
     // TODO: use config to determine DB location
     playerDB, err := player.NewPlayerDB("/tmp/pdb")
-
     if err != nil {
         return
     }
 
-    mbus, err = comm.NewMBusNode("game")
-
+    mbus, err := comm.NewMBusNode("game")
     if err != nil {
         return
     }
 
-    handler = NewMessageHandler(playerDB, mbus)
+    pChanged := make(chan string)
+    pLogin := make(chan string)
+    pLogout := make(chan string)
 
-    engine = &GameEngine { online_players: online_players, playerDB: playerDB, handler: handler, mbus: mbus }
+    handler := NewMessageHandler(playerDB, mbus, pChanged, pLogin, pLogout)
+
+    engine = &GameEngine { playerDB: playerDB, handler: handler, mbus: mbus }
 
     return
 }

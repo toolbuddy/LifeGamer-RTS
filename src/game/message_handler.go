@@ -16,10 +16,20 @@ type MessageHandler struct {
 
     playerDB *pler.PlayerDB
     mbus     *comm.MBusNode
+    pChanged chan<- string
+    pLogin chan<- string
+    pLogout chan<- string
 }
 
-func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode) *MessageHandler {
-    mHandler := &MessageHandler { OnMessage: make(map[comm.MsgType]OnMessageFunc), playerDB: playerDB, mbus: mbus }
+func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode, pChanged chan<- string, pLogin chan<- string, pLogout chan<- string) *MessageHandler {
+    mHandler := &MessageHandler {
+        OnMessage: make(map[comm.MsgType]OnMessageFunc),
+        playerDB: playerDB,
+        mbus: mbus,
+        pChanged: pChanged,
+        pLogin: pLogin,
+        pLogout: pLogout,
+    }
 
     mHandler.OnMessage[comm.PlayerDataRequest] = mHandler.OnPlayerDataRequest
     mHandler.OnMessage[comm.HomePointResponse] = mHandler.OnHomePointResponse
