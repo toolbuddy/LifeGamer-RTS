@@ -10,6 +10,7 @@ import (
 // Function pointer type for common OnMessage function
 type OnMessageFunc func([]byte)
 
+// Use `NewMessageHandler` to constract a new message handler
 type MessageHandler struct {
     OnMessage map[comm.MsgType]OnMessageFunc
 
@@ -18,7 +19,7 @@ type MessageHandler struct {
 }
 
 func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode) *MessageHandler {
-    mHandler := &MessageHandler { playerDB: playerDB, mbus: mbus }
+    mHandler := &MessageHandler { OnMessage: make(map[comm.MsgType]OnMessageFunc), playerDB: playerDB, mbus: mbus }
 
     mHandler.OnMessage[comm.PlayerDataRequest] = mHandler.OnPlayerDataRequest
     mHandler.OnMessage[comm.HomePointResponse] = mHandler.OnHomePointResponse
