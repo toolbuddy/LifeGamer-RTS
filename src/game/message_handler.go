@@ -7,26 +7,34 @@ import (
     "comm"
 )
 
-var playerDB *pler.PlayerDB
-var mbus *comm.MBusNode
+// Function pointer type for common OnMessage function
+type OnMessageFunc func([]byte)
 
-func Test() {
-    playerDB, _ = pler.NewPlayerDB("./PlayerDB")
-    mbus, _ = comm.NewMBusNode("game")
+type MessageHandler struct {
+    OnMessage map[comm.MsgType]OnMessageFunc
 
+    playerDB *pler.PlayerDB
+    mbus     *comm.MBusNode
+}
+
+func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode) *MessageHandler {
+    mHandler := &MessageHandler { playerDB: playerDB, mbus: mbus }
+
+    mHandler.OnMessage[comm.PlayerDataRequest] = mHandler.OnPlayerDataRequest
+    mHandler.OnMessage[comm.HomePointResponse] = mHandler.OnHomePointResponse
+
+    return mHandler
+}
+
+func (mHandler *MessageHandler) Start() {
     go func() {
-        for msg := range mbus.ReaderChan {
+        for msg := range mHandler.mbus.ReaderChan {
             payload := new(comm.Payload)
 
             if err := json.Unmarshal(msg, payload); err != nil {
                 log.Println(err)
             } else {
-                switch payload.Msg_type {
-                case comm.PlayerDataRequest:
-                    go OnPlayerDataRequest(msg)
-                case comm.HomePointResponse:
-                    go OnHomePointResponse(msg)
-                }
+                mHandler.OnMessage[payload.Msg_type](msg)
             }
         }
     }()
@@ -37,7 +45,7 @@ func toPayload(b []byte) (payload comm.Payload, err error) {
     return
 }
 
-func OnPlayerDataRequest(request []byte) {
+func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
     payload, err := toPayload(request)
 
     if err != nil {
@@ -46,11 +54,11 @@ func OnPlayerDataRequest(request []byte) {
     }
 
     username := payload.Username
-    player, err := playerDB.Get(username)
+    player, err := mHandler.playerDB.Get(username)
 
     if err != nil {
         // Username not found! Create new player in PlayerDB
-        if err := playerDB.Put(username, player); err != nil {
+        if err := mHandler.playerDB.Put(username, player); err != nil {
             log.Println(err)
         }
     }
@@ -59,7 +67,7 @@ func OnPlayerDataRequest(request []byte) {
         if b, err := json.Marshal(comm.Payload { comm.HomePointRequest, username, "Please select the home point" }); err != nil {
             log.Println(err)
         } else {
-            defer mbus.Write("ws", b)
+            defer mHandler.mbus.Write("ws", b)
         }
     }
 
@@ -71,11 +79,11 @@ func OnPlayerDataRequest(request []byte) {
         log.Println(err)
         return
     } else {
-        mbus.Write("ws", b)
+        mHandler.mbus.Write("ws", b)
     }
 }
 
-func OnHomePointResponse(response []byte) {
+func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
     playerData := new(comm.PlayerDataPayload)
 
     if err := json.Unmarshal(response, playerData); err != nil {
@@ -84,7 +92,7 @@ func OnHomePointResponse(response []byte) {
     }
 
     username := playerData.Username
-    player, err := playerDB.Get(username)
+    player, err := mHandler.playerDB.Get(username)
 
     if err != nil {
         log.Println(err)
@@ -94,7 +102,7 @@ func OnHomePointResponse(response []byte) {
     player.Home = playerData.Home
     player.Initialized = true
 
-    if err := playerDB.Put(username, player); err != nil {
+    if err := mHandler.playerDB.Put(username, player); err != nil {
         log.Println(err)
         return
     }
