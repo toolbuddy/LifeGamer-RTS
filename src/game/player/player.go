@@ -19,6 +19,18 @@ type PlayerDB struct {
     *leveldb.DB
 }
 
+func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
+    db, err := leveldb.OpenFile(path, nil)
+
+    if err != nil {
+        return
+    }
+
+    pdb = &PlayerDB { db }
+
+    return
+}
+
 func (pdb *PlayerDB) Close() error {
     return pdb.DB.Close()
 }
@@ -98,16 +110,4 @@ func (pdb *PlayerDB) Put(key string, value Player) error {
     enc.Encode(value)
 
     return pdb.DB.Put([]byte(key), buffer.Bytes(), nil)
-}
-
-func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
-    db, err := leveldb.OpenFile(path, nil)
-
-    if err != nil {
-        return
-    }
-
-    pdb = &PlayerDB { db }
-
-    return
 }
