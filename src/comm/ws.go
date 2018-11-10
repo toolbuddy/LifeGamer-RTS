@@ -28,8 +28,8 @@ func NewWsServer() (server *WsServer, err error) {
     clients     := make(map[string] []*WsClient)
     reg_queue   := make(chan *WsClient)
     unreg_queue := make(chan *WsClient)
-    mbus, err   := NewMBusNode("ws")
 
+    mbus, err   := NewMBusNode("ws")
     if err != nil {
         return
     }
@@ -47,7 +47,6 @@ func (server *WsServer) Start(port int) {
     http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
         upgrader := websocket.Upgrader { CheckOrigin: func(r *http.Request) bool { return true } }
         conn, err := upgrader.Upgrade(w, r, nil)
-
         if err != nil {
             log.Println(err)
             return
@@ -122,15 +121,12 @@ func (server *WsServer) Start(port int) {
                 go func() {
                     for {
                         _, msg, err := conn.ReadMessage()
-
                         if err != nil {
                             if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
                                 log.Println(err)
                             }
 
-                            conn.Close()
                             server.unreg_queue <- conn
-
                             return
                         }
 
@@ -141,7 +137,7 @@ func (server *WsServer) Start(port int) {
                 // Send username to browser
                 conn.WriteJSON( Payload { LoginResponse, username, "Login Successful" } )
 
-                if b, err := json.Marshal( Payload { Msg_type: PlayerDataRequest, Username: username } ); err != nil {
+                if b, err := json.Marshal( Payload { Msg_type: LoginRequest, Username: username } ); err != nil {
                     log.Println(err)
                 } else {
                     server.mbus.Write("game", b)
@@ -149,6 +145,12 @@ func (server *WsServer) Start(port int) {
 
             case conn := <-server.unreg_queue: // unregister
                 username := conn.Username
+
+                if b, err := json.Marshal( Payload { Msg_type: LogoutRequest, Username: username } ); err != nil {
+                    log.Println(err)
+                } else {
+                    server.mbus.Write("game", b)
+                }
 
                 if user_conns, ok := server.clients[username]; ok {
                     for i, c := range user_conns {

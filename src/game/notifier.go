@@ -10,18 +10,16 @@ import (
 
 type Notifier struct {
     online_players  map[string] player.Player
-    playerDB        *player.PlayerDB
-    // Receive data changed players from MessageHandler
-    pChanged <-chan string
-    pLogin   <-chan string
-    pLogout  <-chan string
-
-    // used to send latest player data to servers
-    mbus     *comm.MBusNode
+    playerDB        *player.PlayerDB            // Receive data changed players from MessageHandler
+    pChanged        <-chan string
+    pLogin          <-chan string
+    pLogout         <-chan string               // used to send latest player data to servers
+    mbus            *comm.MBusNode
 }
 
 func NewNotifier(playerDB *player.PlayerDB, mbus *comm.MBusNode, pChanged <-chan string, pLogin <-chan string, pLogout <-chan string) (notifier *Notifier) {
     online_players := make(map[string] player.Player)
+
     notifier = &Notifier {
         online_players: online_players,
         playerDB: playerDB,
@@ -51,6 +49,7 @@ func (notifier Notifier) Start() {
                         log.Println(err)
                         continue
                     }
+
                     notifier.online_players[user] = p
                 }
             case user := <-notifier.pChanged:
@@ -61,6 +60,7 @@ func (notifier Notifier) Start() {
                         log.Println(err)
                         continue
                     }
+
                     notifier.online_players[user] = p
                 }
             }

@@ -10,11 +10,11 @@ import (
 /*
  * Message type for server/client communication.
  *
- * Remember to add type name to method `String` after you add a new type.
- * If the new type is added at the end of const block,
- * change the end condition of loop in method `MsgType2Json` also.
+ * XXX: Remember to add type name to method `String` after you add a new type.
+ *      If the new type is added at the end of const block,
+ *      change the end condition of loop in method `MsgType2Json` also.
  *
- * Please write type name with the same order of constant!!!
+ * XXX: Please write type name with the same order of constants!!!
  */
 type MsgType uint
 
@@ -23,6 +23,7 @@ const (
     LoginRequest MsgType = iota
     PlayerDataRequest
     MapDataRequest
+    LogoutRequest
 
     // Request from server
     HomePointRequest
@@ -41,10 +42,14 @@ func (mtype MsgType) String() string {
         "LoginRequest",
         "PlayerDataRequest",
         "MapDataRequest",
+        "LogoutRequest",
+
         "HomePointRequest",
+
         "LoginResponse",
         "PlayerDataResponse",
         "MapDataResponse",
+
         "HomePointResponse",
     }[mtype]
 }
@@ -58,19 +63,18 @@ func MsgType2Json() (err error) {
     }
 
     b, err := json.Marshal(m)
-
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         return
     }
 
     fp, err := os.OpenFile("message_type.json", os.O_CREATE | os.O_WRONLY, 0644)
-    defer fp.Close()
-
     if err != nil {
         fmt.Fprintln(os.Stderr, err)
         return
     }
+
+    defer fp.Close()
 
     fmt.Fprintln(fp, string(b))
 

@@ -5,6 +5,7 @@ import (
     "log"
     "encoding/json"
     "comm"
+    "time"
 )
 
 // Function pointer type for common OnMessage function
@@ -12,13 +13,12 @@ type OnMessageFunc func([]byte)
 
 // Use `NewMessageHandler` to constract a new message handler
 type MessageHandler struct {
-    OnMessage map[comm.MsgType]OnMessageFunc
-
-    playerDB *pler.PlayerDB
-    mbus     *comm.MBusNode
-    pChanged chan<- string
-    pLogin chan<- string
-    pLogout chan<- string
+    OnMessage   map[comm.MsgType]OnMessageFunc
+    playerDB    *pler.PlayerDB
+    mbus        *comm.MBusNode
+    pChanged    chan<- string
+    pLogin      chan<- string
+    pLogout     chan<- string
 }
 
 func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode, pChanged chan<- string, pLogin chan<- string, pLogout chan<- string) *MessageHandler {
@@ -31,13 +31,15 @@ func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode, pChanged ch
         pLogout: pLogout,
     }
 
+    mHandler.OnMessage[comm.LoginRequest]      = mHandler.OnLoginRequest
     mHandler.OnMessage[comm.PlayerDataRequest] = mHandler.OnPlayerDataRequest
+    mHandler.OnMessage[comm.LogoutRequest]     = mHandler.OnLogoutRequest
     mHandler.OnMessage[comm.HomePointResponse] = mHandler.OnHomePointResponse
 
     return mHandler
 }
 
-func (mHandler *MessageHandler) Start() {
+func (mHandler MessageHandler) Start() {
     go func() {
         for msg := range mHandler.mbus.ReaderChan {
             payload := new(comm.Payload)
@@ -56,9 +58,20 @@ func toPayload(b []byte) (payload comm.Payload, err error) {
     return
 }
 
+func (mHandler MessageHandler) OnLoginRequest(request []byte) {
+    mHandler.OnPlayerDataRequest(request)
+
+    payload, err := toPayload(request)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    mHandler.pLogin <- payload.Username
+}
+
 func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
     payload, err := toPayload(request)
-
     if err != nil {
         log.Println(err)
         return
@@ -66,9 +79,10 @@ func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
 
     username := payload.Username
     player, err := mHandler.playerDB.Get(username)
-
     if err != nil {
         // Username not found! Create new player in PlayerDB
+        player.UpdateTime = time.Now().Unix()
+
         if err := mHandler.playerDB.Put(username, player); err != nil {
             log.Println(err)
         }
@@ -94,6 +108,16 @@ func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
     }
 }
 
+func (mHandler MessageHandler) OnLogoutRequest(request []byte) {
+    payload, err := toPayload(request)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    mHandler.pLogout <- payload.Username
+}
+
 func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
     playerData := new(comm.PlayerDataPayload)
 
@@ -104,7 +128,6 @@ func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
 
     username := playerData.Username
     player, err := mHandler.playerDB.Get(username)
-
     if err != nil {
         log.Println(err)
         return
@@ -112,9 +135,12 @@ func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
 
     player.Home = playerData.Home
     player.Initialized = true
+    player.UpdateTime = time.Now().Unix()
 
     if err := mHandler.playerDB.Put(username, player); err != nil {
         log.Println(err)
         return
     }
+
+    mHandler.pChanged <- username
 }

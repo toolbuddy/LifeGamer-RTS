@@ -13,6 +13,7 @@ type Player struct {
     Power int
     Home util.Point // spawn point
     Initialized bool
+    UpdateTime int64
 }
 
 type PlayerDB struct {
@@ -21,7 +22,6 @@ type PlayerDB struct {
 
 func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
     db, err := leveldb.OpenFile(path, nil)
-
     if err != nil {
         return
     }
@@ -41,7 +41,6 @@ func (pdb *PlayerDB) Delete(key string) error {
 
 func (pdb *PlayerDB) Get(key string) (value Player, err error) {
     v, err := pdb.DB.Get([]byte(key), nil)
-
     if err != nil {
         return
     }
@@ -51,54 +50,6 @@ func (pdb *PlayerDB) Get(key string) (value Player, err error) {
 
     dec := gob.NewDecoder(&buffer)
     dec.Decode(&value)
-
-    return
-}
-
-func (pdb *PlayerDB) GetHome(key string) (home util.Point, err error) {
-    p, err := pdb.Get(key)
-
-    if err != nil {
-        return
-    }
-
-    home = p.Home
-
-    return
-}
-
-func (pdb *PlayerDB) GetHuman(key string) (human int, err error) {
-    p, err := pdb.Get(key)
-
-    if err != nil {
-        return
-    }
-
-    human = p.Human
-
-    return
-}
-
-func (pdb *PlayerDB) GetMoney(key string) (money int, err error) {
-    p, err := pdb.Get(key)
-
-    if err != nil {
-        return
-    }
-
-    money = p.Money
-
-    return
-}
-
-func (pdb *PlayerDB) GetPower(key string) (power int, err error) {
-    p, err := pdb.Get(key)
-
-    if err != nil {
-        return
-    }
-
-    power = p.Power
 
     return
 }
