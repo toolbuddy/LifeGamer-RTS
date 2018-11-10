@@ -24,9 +24,9 @@ func NewGameEngine() (engine *GameEngine, err error) {
         return
     }
 
-    pChanged := make(chan string)
-    pLogin := make(chan string)
-    pLogout := make(chan string)
+    pChanged := make(chan string, 256)
+    pLogin := make(chan string, 256)
+    pLogout := make(chan string, 256)
 
     handler := NewMessageHandler(playerDB, mbus, pChanged, pLogin, pLogout)
     notifier := NewNotifier(playerDB, mbus, pChanged, pLogin, pLogout)
