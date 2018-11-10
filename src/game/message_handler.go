@@ -98,9 +98,10 @@ func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
 
     // Send player data to WsServer
     payload.Msg_type = comm.PlayerDataResponse
-    playerData := comm.PlayerDataPayload { payload, player.Home, player.Human, player.Money, player.Power }
+    payload.Message = ""
+    player_data := PlayerDataPayload { payload, player }
 
-    if b, err := json.Marshal(playerData); err != nil {
+    if b, err := json.Marshal(player_data); err != nil {
         log.Println(err)
         return
     } else {
@@ -119,21 +120,21 @@ func (mHandler MessageHandler) OnLogoutRequest(request []byte) {
 }
 
 func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
-    playerData := new(comm.PlayerDataPayload)
+    player_data := new(PlayerDataPayload)
 
-    if err := json.Unmarshal(response, playerData); err != nil {
+    if err := json.Unmarshal(response, player_data); err != nil {
         log.Println(err)
         return
     }
 
-    username := playerData.Username
+    username := player_data.Username
     player, err := mHandler.playerDB.Get(username)
     if err != nil {
         log.Println(err)
         return
     }
 
-    player.Home = playerData.Home
+    player.Home = player_data.Home
     player.Initialized = true
     player.UpdateTime = time.Now().Unix()
 

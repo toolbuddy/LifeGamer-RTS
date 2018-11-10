@@ -1,7 +1,6 @@
 package comm
 
 import (
-    "util"
     "fmt"
     "encoding/json"
     "os"
@@ -86,13 +85,4 @@ type Payload struct {
     Msg_type MsgType
     Username string
     Message  string
-}
-
-type PlayerDataPayload struct {
-    Payload
-
-    Home util.Point // spawn point
-    Human int
-    Money int
-    Power int
 }
