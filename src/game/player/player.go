@@ -3,8 +3,7 @@ package player
 import (
     "util"
     "github.com/syndtr/goleveldb/leveldb"
-    "encoding/gob"
-    "bytes"
+    "encoding/json"
 )
 
 type Player struct {
@@ -27,38 +26,28 @@ func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
     }
 
     pdb = &PlayerDB { db }
-
     return
 }
 
-func (pdb *PlayerDB) Close() error {
-    return pdb.DB.Close()
-}
-
-func (pdb *PlayerDB) Delete(key string) error {
+func (pdb PlayerDB) Delete(key string) error {
     return pdb.DB.Delete([]byte(key), nil)
 }
 
-func (pdb *PlayerDB) Get(key string) (value Player, err error) {
+func (pdb PlayerDB) Get(key string) (value Player, err error) {
     v, err := pdb.DB.Get([]byte(key), nil)
     if err != nil {
         return
     }
 
-    var buffer bytes.Buffer
-    buffer.Write(v)
-
-    dec := gob.NewDecoder(&buffer)
-    dec.Decode(&value)
-
+    err = json.Unmarshal(v, &value)
     return
 }
 
-func (pdb *PlayerDB) Put(key string, value Player) error {
-    var buffer bytes.Buffer
+func (pdb PlayerDB) Put(key string, value Player) error {
+    b, err := json.Marshal(value)
+    if err != nil {
+        return err
+    }
 
-    enc := gob.NewEncoder(&buffer)
-    enc.Encode(value)
-
-    return pdb.DB.Put([]byte(key), buffer.Bytes(), nil)
+    return pdb.DB.Put([]byte(key), b, nil)
 }
