@@ -4,6 +4,7 @@ import (
     "log"
     "time"
     "comm"
+    "strconv"
     "game/player"
 )
 
@@ -73,27 +74,24 @@ func (notifier Notifier) Start() {
 
 func notify_loop(ch <-chan string, user string, mbus *comm.MBusNode, db *player.PlayerDB) {
     p, err := db.Get(user)
-    money := p.Money
-    power := p.Power
-    human := p.Human
     if err != nil {
         log.Println(err)
         return
     }
 
+    // Update player's data
+    p.Update()
+
     for m := range ch {
         switch m {
-        case "tick":        // TODO: use real update data
-            money += 1
-            power += 1
-            human += 1
+        case "tick":
+            p.Update()
         case "update":
             p, err = db.Get(user)
-            money = p.Money
-            power = p.Power
-            human = p.Human
+            p.Update()
         }
-        mbus.Write("ws", []byte(user + "'s data"))
+        // TODO: use real communication format
+        mbus.Write("ws", []byte(user + "'s money: " + strconv.FormatInt(p.Money, 10)))
     }
     log.Println("Notify loop stopped")
 }
