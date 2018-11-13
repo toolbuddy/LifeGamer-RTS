@@ -3,10 +3,12 @@ package game
 import (
     "comm"
     "game/player"
+    "game/world"
 )
 
 type GameEngine struct {
     playerDB    *player.PlayerDB
+    worldDB     *world.WorldDB
     handler     *MessageHandler
     notifier    *Notifier
     mbus        *comm.MBusNode
@@ -15,6 +17,11 @@ type GameEngine struct {
 func NewGameEngine() (engine *GameEngine, err error) {
     // TODO: use config to determine DB location
     playerDB, err := player.NewPlayerDB("/tmp/pdb")
+    if err != nil {
+        return
+    }
+
+    worldDB, err := world.NewWorldDB("/tmp/wdb")
     if err != nil {
         return
     }
@@ -28,10 +35,10 @@ func NewGameEngine() (engine *GameEngine, err error) {
     pLogin := make(chan string, 256)
     pLogout := make(chan string, 256)
 
-    handler := NewMessageHandler(playerDB, mbus, pChanged, pLogin, pLogout)
-    notifier := NewNotifier(playerDB, mbus, pChanged, pLogin, pLogout)
+    handler := NewMessageHandler(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
+    notifier := NewNotifier(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
 
-    engine = &GameEngine { playerDB: playerDB, handler: handler, notifier: notifier, mbus: mbus }
+    engine = &GameEngine { playerDB: playerDB, worldDB: worldDB, handler: handler, notifier: notifier, mbus: mbus }
 
     return
 }

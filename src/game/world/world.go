@@ -20,13 +20,13 @@ type Chunk struct {
 }
 
 func NewChunk(pos util.Point) *Chunk {
-    blocks := make([][]Block, ChunkSize.H)
+    blocks := make([][]Block, ChunkSize.W)
 
-    for r := range blocks {
-        blocks[r] = make([]Block, ChunkSize.W)
+    for x := range blocks {
+        blocks[x] = make([]Block, ChunkSize.H)
 
-        for c := range blocks[r] {
-            blocks[r][c] = Block { Pos: util.Point { c, r } }
+        for y := range blocks[x] {
+            blocks[x][y] = Block { Pos: util.Point { x, y } }
         }
     }
 

@@ -7,7 +7,7 @@ type Point struct {
 }
 
 func (point Point) String() string {
-    return fmt.Sprintf("%d, %d", point.X, point.Y)
+    return fmt.Sprintf("%d,%d", point.X, point.Y)
 }
 
 type Size struct {

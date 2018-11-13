@@ -6,6 +6,7 @@ import (
     "comm"
     "strconv"
     "game/player"
+    "game/world"
 )
 
 // This file is used to notify when data updates
@@ -13,18 +14,20 @@ import (
 type Notifier struct {
     online_players  map[string] chan<- string
     playerDB        *player.PlayerDB            // Receive data changed players from MessageHandler
+    worldDB         *world.WorldDB
     pChanged        <-chan string
     pLogin          <-chan string
     pLogout         <-chan string               // used to send latest player data to servers
     mbus            *comm.MBusNode
 }
 
-func NewNotifier(playerDB *player.PlayerDB, mbus *comm.MBusNode, pChanged <-chan string, pLogin <-chan string, pLogout <-chan string) (notifier *Notifier) {
+func NewNotifier(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged <-chan string, pLogin <-chan string, pLogout <-chan string) (notifier *Notifier) {
     online_players := make(map[string] chan<- string)
 
     notifier = &Notifier {
         online_players: online_players,
         playerDB: playerDB,
+        worldDB: worldDB,
         pChanged: pChanged,
         pLogin: pLogin,
         pLogout: pLogout,

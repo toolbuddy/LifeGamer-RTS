@@ -2,10 +2,12 @@ package game
 
 import (
     pler "game/player"
+    "game/world"
     "log"
     "encoding/json"
     "comm"
     "time"
+    "util"
 )
 
 // Function pointer type for common OnMessage function
@@ -15,16 +17,18 @@ type OnMessageFunc func([]byte)
 type MessageHandler struct {
     OnMessage   map[comm.MsgType]OnMessageFunc
     playerDB    *pler.PlayerDB
+    worldDB     *world.WorldDB
     mbus        *comm.MBusNode
     pChanged    chan<- string
     pLogin      chan<- string
     pLogout     chan<- string
 }
 
-func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode, pChanged chan<- string, pLogin chan<- string, pLogout chan<- string) *MessageHandler {
+func NewMessageHandler(playerDB *pler.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged chan<- string, pLogin chan<- string, pLogout chan<- string) *MessageHandler {
     mHandler := &MessageHandler {
         OnMessage: make(map[comm.MsgType]OnMessageFunc),
         playerDB: playerDB,
+        worldDB: worldDB,
         mbus: mbus,
         pChanged: pChanged,
         pLogin: pLogin,
@@ -35,6 +39,7 @@ func NewMessageHandler(playerDB *pler.PlayerDB, mbus *comm.MBusNode, pChanged ch
     mHandler.OnMessage[comm.PlayerDataRequest] = mHandler.OnPlayerDataRequest
     mHandler.OnMessage[comm.LogoutRequest]     = mHandler.OnLogoutRequest
     mHandler.OnMessage[comm.HomePointResponse] = mHandler.OnHomePointResponse
+    mHandler.OnMessage[comm.MapDataRequest]    = mHandler.OnMapDataRequest
 
     return mHandler
 }
@@ -144,4 +149,42 @@ func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
     }
 
     mHandler.pChanged <- username
+}
+
+func (mHandler MessageHandler) OnMapDataRequest(request []byte) {
+    var payload struct {
+        comm.Payload
+        Poss []util.Point
+    }
+
+    if err := json.Unmarshal(request, &payload); err != nil {
+        log.Println(err)
+        return
+    }
+
+    var chunks []world.Chunk = []world.Chunk {}
+
+    for _, pos := range payload.Poss {
+        chunk, err := mHandler.worldDB.Get(pos.String());
+        if err != nil {
+            chunk = *world.NewChunk(pos)
+
+            if err := mHandler.worldDB.Put(pos.String(), chunk); err != nil {
+                log.Println(err)
+            }
+        }
+
+        chunks = append(chunks, chunk)
+    }
+
+    payload.Msg_type = comm.MapDataResponse
+    payload.Message = ""
+    map_data := MapDataPayload { payload.Payload, chunks }
+
+    if b, err := json.Marshal(map_data); err != nil {
+        log.Println(err)
+        return
+    } else {
+        mHandler.mbus.Write("ws", b)
+    }
 }
