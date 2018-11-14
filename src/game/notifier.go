@@ -102,5 +102,5 @@ func notify_loop(ch <-chan string, user string, mbus *comm.MBusNode, db *player.
 
         mbus.Write("ws", b)
     }
-    log.Println("Notify loop stopped")
+    log.Println("Notifier:", "Notify loop stopped")
 }

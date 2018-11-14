@@ -7,14 +7,14 @@ import (
 )
 
 /*
- * Message type for server/client communication.
- *
- * XXX: Remember to add type name to method `String` after you add a new type.
- *      If the new type is added at the end of const block,
- *      change the end condition of loop in method `MsgType2Json` also.
- *
- * XXX: Please write type name with the same order of constants!!!
- */
+* Message type for server/client communication.
+*
+* XXX: Remember to add type name to method `String` after you add a new type.
+*      If the new type is added at the end of const block,
+*      change the end condition of loop in method `MsgType2Json` also.
+*
+* XXX: Please write type name with the same order of constants!!!
+*/
 type MsgType uint
 
 const (
@@ -36,28 +36,30 @@ const (
     HomePointResponse
 )
 
+var msg_str = []string{
+    "LoginRequest",
+    "PlayerDataRequest",
+    "MapDataRequest",
+    "LogoutRequest",
+
+    "HomePointRequest",
+
+    "LoginResponse",
+    "PlayerDataResponse",
+    "MapDataResponse",
+
+    "HomePointResponse",
+}
+
 func (mtype MsgType) String() string {
-    return [...]string {
-        "LoginRequest",
-        "PlayerDataRequest",
-        "MapDataRequest",
-        "LogoutRequest",
-
-        "HomePointRequest",
-
-        "LoginResponse",
-        "PlayerDataResponse",
-        "MapDataResponse",
-
-        "HomePointResponse",
-    }[mtype]
+    return msg_str[mtype]
 }
 
 // Call this function to generate message type json file for client
 func MsgType2Json() (err error) {
     m := make(map[string]MsgType)
 
-    for i := MsgType(0); i <= HomePointResponse; i++ {
+    for i := MsgType(0); int(i) < len(msg_str); i++ {
         m[i.String()] = i
     }
 
