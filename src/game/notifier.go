@@ -4,9 +4,9 @@ import (
     "log"
     "time"
     "comm"
-    "strconv"
     "game/player"
     "game/world"
+    "encoding/json"
 )
 
 // This file is used to notify when data updates
@@ -93,8 +93,14 @@ func notify_loop(ch <-chan string, user string, mbus *comm.MBusNode, db *player.
             p, err = db.Get(user)
             p.Update()
         }
+
         // TODO: use real communication format
-        mbus.Write("ws", []byte(user + "'s money: " + strconv.FormatInt(p.Money, 10)))
+        b, err := json.Marshal(PlayerDataPayload { comm.Payload { Username: user, Msg_type: comm.PlayerDataResponse }, p })
+        if err != nil {
+            log.Println(err)
+        }
+
+        mbus.Write("ws", b)
     }
     log.Println("Notify loop stopped")
 }

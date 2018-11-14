@@ -1,6 +1,4 @@
 .*.swp
 pkg/
 src/github.com/
-test.go
 *.json
-PlayerDB/
