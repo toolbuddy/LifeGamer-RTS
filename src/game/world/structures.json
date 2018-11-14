@@ -1,0 +1,128 @@
+{
+    "11" : {
+        "terrain" : [0,1,2,3,4,5,6,7,8,10],
+        "cost" : 10000,
+        "power" : 1000,
+        "human" : -10,
+        "money" : -1500
+    },
+    "12" : {
+        "Terrain" : [5,8],
+        "cost" : 15000,
+        "power" : 500,
+        "human" : -3,
+        "money" : -200
+    },
+    "13" : {
+        "Terrain" : [1,2,6,7],
+        "cost" : 15000,
+        "power" : 600,
+        "human" : 1,
+        "money" : -300 
+    },
+    "14" : {
+        "Terrain" : [7],
+        "cost" : 10000,
+        "power" : 500,
+        "human" : -2,
+        "money" : -500 
+    },
+    "15" : {
+        "Terrain" : [0,1,2,6,7,8],
+        "cost" : 20000,
+        "power" : 500,
+        "human" : -1,
+        "money" : -200
+    },
+    "16" : {
+        "Terrain" : [10],
+        "cost" : 20000,
+        "power" : 500,
+        "human" : -1,
+        "money" : -300 
+    },
+    "17" : {
+        "terrain" : [0,1,2,3,6,7,8,10],
+        "cost" : 70000,
+        "power" : 3000,
+        "human" : -20,
+        "money" : -6000
+    },
+    "18" : {
+        "terrain" : [0,1,2,3,6,7,8,10],
+        "cost" : 10000,
+        "power" : 1000,
+        "human" : -10,
+        "money" : -1500
+    },
+    "19" : {
+        "terrain" : [0,1,2,3,6,7,8,10],
+        "cost" : 50000,
+        "power" : -2000,
+        "human" : -1,
+        "money" : 5000
+    },
+    "21" : {
+        "terrain" : [3],
+        "cost" : 8000,
+        "power" : -500,
+        "human" : -10,
+        "money" : 2000
+    },
+    "22" : {
+        "terrain" : [4,5,7,8],
+        "cost" : 12000,
+        "power" : -200,
+        "human" : -5,
+        "money" : 2000
+    },
+    "23" : {
+        "terrain" : [1],
+        "cost" : 60000,
+        "power" : -2500,
+        "human" : -20,
+        "money" : 7000
+    },
+    "24" : {
+        "terrain" : [2],
+        "cost" : 8000,
+        "power" : -100,
+        "human" : -30,
+        "money" : 2000
+    },
+    "25" : {
+        "terrain" : [10],
+        "cost" : 0,
+        "power" : 0,
+        "human" : -2,
+        "money" : 1000
+    },
+    "31" : {
+        "terrain" : [0,1,2,3,6,7,8],
+        "cost" : 10000,
+        "power" : -200,
+        "human" : 0,
+        "money" : 0
+    },
+    "32" : {
+        "terrain" : [0,1,2,3,6,7,8],
+        "cost" : 25000,
+        "power" : -400,
+        "human" : 0,
+        "money" : 0
+    },
+    "33" : {
+        "terrain" : [0,1,2,3,6,7,8],
+        "cost" : 60000,
+        "power" : -500,
+        "human" : 0,
+        "money" : 0
+    },
+    "34" : {
+        "terrain" : [0,1,2,3,6,7,8],
+        "cost" : 8000,
+        "power" : -100,
+        "human" : -2,
+        "money" : -500
+    }
+}
