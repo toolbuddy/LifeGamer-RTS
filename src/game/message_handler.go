@@ -1,7 +1,7 @@
 package game
 
 import (
-    pler "game/player"
+    "game/player"
     "game/world"
     "log"
     "encoding/json"
@@ -11,20 +11,20 @@ import (
 )
 
 // Function pointer type for common OnMessage function
-type OnMessageFunc func([]byte)
+type OnMessageFunc func(comm.MessageWrapper)
 
 // Use `NewMessageHandler` to constract a new message handler
 type MessageHandler struct {
-    OnMessage   map[comm.MsgType]OnMessageFunc
-    playerDB    *pler.PlayerDB
+    OnMessage   map[comm.MsgType] OnMessageFunc
+    playerDB    *player.PlayerDB
     worldDB     *world.WorldDB
     mbus        *comm.MBusNode
-    pChanged    chan<- string
-    pLogin      chan<- string
-    pLogout     chan<- string
+    pChanged    chan<- ClientInfo
+    pLogin      chan<- ClientInfo
+    pLogout     chan<- ClientInfo
 }
 
-func NewMessageHandler(playerDB *pler.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged chan<- string, pLogin chan<- string, pLogout chan<- string) *MessageHandler {
+func NewMessageHandler(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged chan<- ClientInfo, pLogin chan<- ClientInfo, pLogout chan<- ClientInfo) *MessageHandler {
     mHandler := &MessageHandler {
         OnMessage: make(map[comm.MsgType]OnMessageFunc),
         playerDB: playerDB,
@@ -46,118 +46,107 @@ func NewMessageHandler(playerDB *pler.PlayerDB, worldDB *world.WorldDB, mbus *co
 
 func (mHandler MessageHandler) Start() {
     go func() {
-        for msg := range mHandler.mbus.ReaderChan {
-            payload := new(comm.Payload)
+        for msg_wrapper := range mHandler.mbus.ReaderChan {
+            var payload comm.Payload
 
-            if err := json.Unmarshal(msg, payload); err != nil {
+            if err := json.Unmarshal(msg_wrapper.Data, &payload); err != nil {
                 log.Println(err)
-            } else {
-                mHandler.OnMessage[payload.Msg_type](msg)
+                continue
             }
+
+            mHandler.OnMessage[payload.Msg_type](msg_wrapper)
         }
     }()
 }
 
-func toPayload(b []byte) (payload comm.Payload, err error) {
-    err = json.Unmarshal(b, &payload)
-    return
-}
-
-func (mHandler MessageHandler) OnLoginRequest(request []byte) {
+func (mHandler MessageHandler) OnLoginRequest(request comm.MessageWrapper) {
     mHandler.OnPlayerDataRequest(request)
-
-    payload, err := toPayload(request)
-    if err != nil {
-        log.Println(err)
-        return
-    }
-
-    mHandler.pLogin <- payload.Username
+    mHandler.pLogin <- ClientInfo { request.Cid, request.Username }
 }
 
-func (mHandler MessageHandler) OnPlayerDataRequest(request []byte) {
-    payload, err := toPayload(request)
-    if err != nil {
-        log.Println(err)
-        return
-    }
+func (mHandler MessageHandler) OnPlayerDataRequest(request comm.MessageWrapper) {
+    username := request.Username
 
-    username := payload.Username
-    player, err := mHandler.playerDB.Get(username)
+    player_data, err := mHandler.playerDB.Get(username)
     if err != nil {
         // Username not found! Create new player in PlayerDB
-        player.UpdateTime = time.Now().Unix()
+        player_data.UpdateTime = time.Now().Unix()
 
-        if err := mHandler.playerDB.Put(username, player); err != nil {
+        if err := mHandler.playerDB.Put(username, player_data); err != nil {
             log.Println(err)
         }
     }
 
-    if !player.Initialized {
-        if b, err := json.Marshal(comm.Payload { comm.HomePointRequest, username, "Please select the home point" }); err != nil {
+    if !player_data.Initialized {
+        if b, err := json.Marshal(comm.Payload { comm.HomePointRequest, username }); err != nil {
             log.Println(err)
         } else {
-            defer mHandler.mbus.Write("ws", b)
+            msg := request
+            msg.Sendby = comm.SendByClient
+            msg.Data = b
+
+            defer mHandler.mbus.Write("ws", msg)
         }
     }
 
     // Send player data to WsServer
-    payload.Msg_type = comm.PlayerDataResponse
-    payload.Message = ""
-    player_data := PlayerDataPayload { payload, player }
+    payload := PlayerDataPayload { comm.Payload { comm.PlayerDataResponse, username }, player_data }
 
-    if b, err := json.Marshal(player_data); err != nil {
-        log.Println(err)
-        return
-    } else {
-        mHandler.mbus.Write("ws", b)
-    }
-}
-
-func (mHandler MessageHandler) OnLogoutRequest(request []byte) {
-    payload, err := toPayload(request)
+    b, err := json.Marshal(payload)
     if err != nil {
         log.Println(err)
         return
     }
 
-    mHandler.pLogout <- payload.Username
+    msg := request
+    msg.Sendby = comm.SendByClient
+    msg.Data = b
+
+    mHandler.mbus.Write("ws", msg)
 }
 
-func (mHandler MessageHandler) OnHomePointResponse(response []byte) {
-    player_data := new(PlayerDataPayload)
+func (mHandler MessageHandler) OnLogoutRequest(request comm.MessageWrapper) {
+    mHandler.pLogout <- ClientInfo { request.Cid, request.Username }
+}
 
-    if err := json.Unmarshal(response, player_data); err != nil {
-        log.Println(err)
-        return
-    }
+func (mHandler MessageHandler) OnHomePointResponse(response comm.MessageWrapper) {
+    username := response.Username
 
-    username := player_data.Username
-    player, err := mHandler.playerDB.Get(username)
+    player_data, err := mHandler.playerDB.Get(username)
     if err != nil {
         log.Println(err)
         return
     }
 
-    player.Home = player_data.Home
-    player.Initialized = true
-    player.UpdateTime = time.Now().Unix()
+    var payload struct {
+        comm.Payload
+        Home util.Point
+    }
 
-    if err := mHandler.playerDB.Put(username, player); err != nil {
+    if err := json.Unmarshal(response.Data, &payload); err != nil {
         log.Println(err)
         return
     }
 
-    mHandler.pChanged <- username
+    player_data.Home = payload.Home
+    player_data.Initialized = true
+    player_data.UpdateTime = time.Now().Unix()
+
+    if err := mHandler.playerDB.Put(username, player_data); err != nil {
+        log.Println(err)
+        return
+    }
+
+    mHandler.pChanged <- ClientInfo { response.Cid, response.Username }
 }
 
-func (mHandler MessageHandler) OnMapDataRequest(request []byte) {
+func (mHandler MessageHandler) OnMapDataRequest(request comm.MessageWrapper) {
     var payload struct {
         comm.Payload
         Poss []util.Point
     }
 
-    if err := json.Unmarshal(request, &payload); err != nil {
+    if err := json.Unmarshal(request.Data, &payload); err != nil {
         log.Println(err)
         return
     }
@@ -178,13 +167,17 @@ func (mHandler MessageHandler) OnMapDataRequest(request []byte) {
     }
 
     payload.Msg_type = comm.MapDataResponse
-    payload.Message = ""
     map_data := MapDataPayload { payload.Payload, chunks }
 
-    if b, err := json.Marshal(map_data); err != nil {
+    b, err := json.Marshal(map_data)
+    if err != nil {
         log.Println(err)
         return
-    } else {
-        mHandler.mbus.Write("ws", b)
     }
+
+    msg := request
+    msg.Sendby = comm.SendByClient
+    msg.Data = b
+
+    mHandler.mbus.Write("ws", msg)
 }

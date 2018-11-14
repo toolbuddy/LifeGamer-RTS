@@ -12,17 +12,17 @@ import (
 // This file is used to notify when data updates
 
 type Notifier struct {
-    online_players  map[string] chan<- string
-    playerDB        *player.PlayerDB            // Receive data changed players from MessageHandler
+    online_players  map[string] map[int] chan<- string
+    playerDB        *player.PlayerDB                    // Receive data changed players from MessageHandler
     worldDB         *world.WorldDB
-    pChanged        <-chan string
-    pLogin          <-chan string
-    pLogout         <-chan string               // used to send latest player data to servers
+    pChanged        <-chan ClientInfo
+    pLogin          <-chan ClientInfo
+    pLogout         <-chan ClientInfo                   // used to send latest player data to servers
     mbus            *comm.MBusNode
 }
 
-func NewNotifier(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged <-chan string, pLogin <-chan string, pLogout <-chan string) (notifier *Notifier) {
-    online_players := make(map[string] chan<- string)
+func NewNotifier(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, pChanged <-chan ClientInfo, pLogin <-chan ClientInfo, pLogout <-chan ClientInfo) (notifier *Notifier) {
+    online_players := make(map[string] map[int] chan<- string)
 
     notifier = &Notifier {
         online_players: online_players,
@@ -42,23 +42,43 @@ func (notifier Notifier) Start() {
     go func() {
         for {
             select {
-            case user := <-notifier.pLogout:
+            case client_info := <-notifier.pLogout:
+                cid := client_info.cid
+                username := client_info.username
+
                 // Delete if user exist
-                if pch, ok := notifier.online_players[user]; ok {
-                    delete(notifier.online_players, user)
-                    close(pch)
+                if user, ok := notifier.online_players[username]; ok {
+                    if client_ch, ok := user[cid]; ok {
+                        close(client_ch)
+                        delete(user, cid)
+                    }
                 }
-            case user := <-notifier.pLogin:
+            case client_info := <-notifier.pLogin:
+                cid := client_info.cid
+                username := client_info.username
+
                 // Add if user not exist
-                if _, ok := notifier.online_players[user]; !ok {
-                    pch := make(chan string, 1)
-                    go notify_loop(pch, user, notifier.mbus, notifier.playerDB)
-                    notifier.online_players[user] = pch
+                user, ok := notifier.online_players[username]
+                if !ok {
+                    user := make(map[int] chan<- string)
+                    notifier.online_players[username] = user
                 }
-            case user := <-notifier.pChanged:
+
+                if _, ok := user[cid]; !ok {
+                    ch := make(chan string, 1)
+                    user[cid] = ch
+
+                    go notify_loop(ch, client_info, notifier.mbus, notifier.playerDB)
+                }
+            case client_info := <-notifier.pChanged:
+                cid := client_info.cid
+                username := client_info.username
+
                 // Update user status if user still online
-                if pch, ok := notifier.online_players[user]; ok {
-                    pch <- "update"
+                if user, ok := notifier.online_players[username]; ok {
+                    if client_ch, ok := user[cid]; ok {
+                        client_ch <- "update"
+                    }
                 }
             }
         }
@@ -68,39 +88,48 @@ func (notifier Notifier) Start() {
     //TODO: Check if here have race condition
     go func() {
         for range time.NewTicker(time.Second).C {
-            for _, ch := range notifier.online_players {
-                ch <- "tick"
+            for _, user := range notifier.online_players {
+                for _, client_ch := range user {
+                    client_ch <- "tick"
+                }
             }
         }
     }()
 }
 
-func notify_loop(ch <-chan string, user string, mbus *comm.MBusNode, db *player.PlayerDB) {
-    p, err := db.Get(user)
+func notify_loop(ch <-chan string, client_info ClientInfo, mbus *comm.MBusNode, db *player.PlayerDB) {
+    cid := client_info.cid
+    username := client_info.username
+
+    player_data, err := db.Get(username)
     if err != nil {
         log.Println(err)
         return
     }
 
     // Update player's data
-    p.Update()
+    player_data.Update()
 
     for m := range ch {
         switch m {
         case "tick":
-            p.Update()
+            player_data.Update()
         case "update":
-            p, err = db.Get(user)
-            p.Update()
+            player_data, err = db.Get(username)
+            player_data.Update()
         }
 
         // TODO: use real communication format
-        b, err := json.Marshal(PlayerDataPayload { comm.Payload { Username: user, Msg_type: comm.PlayerDataResponse }, p })
+        b, err := json.Marshal(PlayerDataPayload { comm.Payload { comm.PlayerDataResponse, username }, player_data })
         if err != nil {
             log.Println(err)
+            continue
         }
 
-        mbus.Write("ws", b)
+        msg := comm.MessageWrapper { cid, username, comm.SendByClient, b }
+
+        mbus.Write("ws", msg)
     }
-    log.Println("Notifier:", "Notify loop stopped")
+
+    log.Println("Notifier: Notify loop stopped")
 }

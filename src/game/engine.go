@@ -6,6 +6,11 @@ import (
     "game/world"
 )
 
+type ClientInfo struct {
+    cid         int
+    username    string
+}
+
 type GameEngine struct {
     playerDB    *player.PlayerDB
     worldDB     *world.WorldDB
@@ -31,15 +36,14 @@ func NewGameEngine() (engine *GameEngine, err error) {
         return
     }
 
-    pChanged := make(chan string, 256)
-    pLogin := make(chan string, 256)
-    pLogout := make(chan string, 256)
+    pChanged := make(chan ClientInfo, 256)
+    pLogin   := make(chan ClientInfo, 256)
+    pLogout  := make(chan ClientInfo, 256)
 
-    handler := NewMessageHandler(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
+    handler  := NewMessageHandler(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
     notifier := NewNotifier(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
 
     engine = &GameEngine { playerDB: playerDB, worldDB: worldDB, handler: handler, notifier: notifier, mbus: mbus }
-
     return
 }
 
