@@ -2,6 +2,8 @@ package main
 
 import (
     "comm"
+    "bufio"
+    "os"
     "game"
 )
 
@@ -12,6 +14,8 @@ func main() {
     engine, _ := game.NewGameEngine()
     engine.Start()
 
+    reader := bufio.NewReader(os.Stdin)
     for {
+        reader.ReadString('\n')
     }
 }

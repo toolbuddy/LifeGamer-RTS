@@ -60,7 +60,7 @@ func (notifier Notifier) Start() {
                 // Add if user not exist
                 user, ok := notifier.online_players[username]
                 if !ok {
-                    user := make(map[int] chan<- string)
+                    user = make(map[int] chan<- string)
                     notifier.online_players[username] = user
                 }
 
