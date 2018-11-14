@@ -7,14 +7,11 @@ import (
 )
 
 /*
-* Message type for server/client communication.
-*
-* XXX: Remember to add type name to method `String` after you add a new type.
-*      If the new type is added at the end of const block,
-*      change the end condition of loop in method `MsgType2Json` also.
-*
-* XXX: Please write type name with the same order of constants!!!
-*/
+ * Message type for server/client communication.
+ *
+ * XXX: Remember to add type name to method `String` after you add a new type.
+ *      Please write type name with the same order of constants!!!
+ */
 type MsgType uint
 
 const (
@@ -36,31 +33,35 @@ const (
     HomePointResponse
 )
 
-var msg_str = []string{
+var msg_type = []string{
+    // Request from client
     "LoginRequest",
     "PlayerDataRequest",
     "MapDataRequest",
     "LogoutRequest",
 
+    // Request from server
     "HomePointRequest",
 
+    // Response from server
     "LoginResponse",
     "PlayerDataResponse",
     "MapDataResponse",
 
+    // Response from client
     "HomePointResponse",
 }
 
 func (mtype MsgType) String() string {
-    return msg_str[mtype]
+    return msg_type[mtype]
 }
 
 // Call this function to generate message type json file for client
 func MsgType2Json() (err error) {
     m := make(map[string]MsgType)
 
-    for i := MsgType(0); int(i) < len(msg_str); i++ {
-        m[i.String()] = i
+    for i, s := range msg_type {
+        m[s] = MsgType(i)
     }
 
     b, err := json.Marshal(m)
@@ -82,9 +83,25 @@ func MsgType2Json() (err error) {
     return
 }
 
+// Sending Method
+type SendingMethod int
+
+const (
+    SendByClient SendingMethod = 1 << iota
+    SendByUser
+    SendByServer
+)
+
+// Data with client id and username wrapped
+type MessageWrapper struct {
+    Cid         int
+    Username    string
+    Sendby      SendingMethod
+    Data        []byte
+}
+
 // Data container for server/client communication
 type Payload struct {
     Msg_type MsgType
     Username string
-    Message  string
 }

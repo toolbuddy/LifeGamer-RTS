@@ -4,26 +4,15 @@ import (
     "errors"
 )
 
-var generator (func() int)
-var chans map[string]chan []byte
+var chans map[string] chan MessageWrapper
 
 func init() {
-    // cid generator
-    generator = func() (func() int) {
-        var i int = -1
-        return func() int {
-            i++
-            return i
-        }
-    }()
-
-    chans = make(map[string]chan []byte)
+    chans = make(map[string] chan MessageWrapper)
 }
 
 type MBusNode struct {
-    cid int
     name string
-    ReaderChan <-chan []byte
+    ReaderChan <-chan MessageWrapper
 }
 
 func NewMBusNode(name string) (node *MBusNode, err error) {
@@ -33,28 +22,25 @@ func NewMBusNode(name string) (node *MBusNode, err error) {
         return
     }
 
-    new_id := generator()
-    chans[name] = make(chan []byte, 256)
-
-    node = &MBusNode { new_id, name, chans[name] }
-
+    chans[name] = make(chan MessageWrapper, 256)
+    node = &MBusNode { name, chans[name] }
     return
 }
 
 // Read single message from MBus
-func (c MBusNode) Read() []byte {
+func (c MBusNode) Read() (msg MessageWrapper, ok bool) {
     select {
-    case msg := <-chans[c.name]:
-        return msg
+    case msg, ok = <-chans[c.name]:
+        return
     default:
-        return nil
+        ok = false
+        return
     }
 }
 
 // Write message to node 'dst', return false if no such node
-func (c MBusNode) Write(dst string, msg []byte) (ok bool) {
+func (c MBusNode) Write(dst string, msg MessageWrapper) (ok bool) {
     dstchan, ok := chans[dst]
-
     if ok {
         dstchan <- msg
     }
