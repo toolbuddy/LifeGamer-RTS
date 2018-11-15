@@ -126,7 +126,7 @@ func notify_loop(ch <-chan string, client_info ClientInfo, mbus *comm.MBusNode, 
             continue
         }
 
-        msg := comm.MessageWrapper { cid, username, comm.SendByClient, b }
+        msg := comm.MessageWrapper { cid, username, comm.SendToClient, b }
 
         mbus.Write("ws", msg)
     }

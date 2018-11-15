@@ -87,16 +87,16 @@ func MsgType2Json() (err error) {
 type SendingMethod int
 
 const (
-    SendByClient SendingMethod = 1 << iota
-    SendByUser
-    SendByServer
+    SendToClient SendingMethod = iota
+    SendToUser
+    Broadcast
 )
 
 // Data with client id and username wrapped
 type MessageWrapper struct {
     Cid         int
     Username    string
-    Sendby      SendingMethod
+    Sendto      SendingMethod
     Data        []byte
 }
 

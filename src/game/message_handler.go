@@ -82,7 +82,7 @@ func (mHandler MessageHandler) OnPlayerDataRequest(request comm.MessageWrapper) 
             log.Println(err)
         } else {
             msg := request
-            msg.Sendby = comm.SendByClient
+            msg.Sendto = comm.SendToClient
             msg.Data = b
 
             defer mHandler.mbus.Write("ws", msg)
@@ -99,7 +99,7 @@ func (mHandler MessageHandler) OnPlayerDataRequest(request comm.MessageWrapper) 
     }
 
     msg := request
-    msg.Sendby = comm.SendByClient
+    msg.Sendto = comm.SendToClient
     msg.Data = b
 
     mHandler.mbus.Write("ws", msg)
@@ -176,7 +176,7 @@ func (mHandler MessageHandler) OnMapDataRequest(request comm.MessageWrapper) {
     }
 
     msg := request
-    msg.Sendby = comm.SendByClient
+    msg.Sendto = comm.SendToClient
     msg.Data = b
 
     mHandler.mbus.Write("ws", msg)

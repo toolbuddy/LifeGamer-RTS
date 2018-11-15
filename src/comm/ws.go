@@ -100,8 +100,8 @@ func (server *WsServer) Start(port int) {
             cid := msg_wrapper.Cid
             username := msg_wrapper.Username
 
-            switch msg_wrapper.Sendby {
-            case SendByClient:
+            switch msg_wrapper.Sendto {
+            case SendToClient:
                 if user, ok := server.clients[username]; ok {
                     if err := user[cid].WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
                         if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
@@ -109,7 +109,7 @@ func (server *WsServer) Start(port int) {
                         }
                     }
                 }
-            case SendByUser:
+            case SendToUser:
                 if user, ok := server.clients[username]; ok {
                     for _, client := range user {
                         if err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
@@ -119,7 +119,7 @@ func (server *WsServer) Start(port int) {
                         }
                     }
                 }
-            case SendByServer:
+            case Broadcast:
                 for _, user := range server.clients {
                     for _, client := range user {
                         if err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
