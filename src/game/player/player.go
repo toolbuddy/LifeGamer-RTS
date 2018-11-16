@@ -22,4 +22,3 @@ func (player *Player) Update() {
     player.UpdateTime = current
     return
 }
-

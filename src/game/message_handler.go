@@ -132,9 +132,9 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
         return
     }
 
+    player_data.Update()
     player_data.Home = payload.Home
     player_data.Initialized = true
-    player_data.UpdateTime = time.Now().Unix()
 
     if err := mHandler.playerDB.Put(username, player_data); err != nil {
         log.Println(err)
