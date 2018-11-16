@@ -1,128 +1,174 @@
 {
-    "11" : {
-        "terrain" : [0,1,2,3,4,5,6,7,8,10],
-        "cost" : 10000,
-        "power" : 1000,
-        "human" : -10,
-        "money" : -1500
-    },
-    "12" : {
-        "Terrain" : [5,8],
-        "cost" : 15000,
-        "power" : 500,
-        "human" : -3,
-        "money" : -200
-    },
-    "13" : {
-        "Terrain" : [1,2,6,7],
-        "cost" : 15000,
-        "power" : 600,
-        "human" : 1,
-        "money" : -300 
-    },
-    "14" : {
-        "Terrain" : [7],
-        "cost" : 10000,
-        "power" : 500,
-        "human" : -2,
-        "money" : -500 
-    },
-    "15" : {
-        "Terrain" : [0,1,2,6,7,8],
-        "cost" : 20000,
-        "power" : 500,
-        "human" : -1,
-        "money" : -200
-    },
-    "16" : {
-        "Terrain" : [10],
-        "cost" : 20000,
-        "power" : 500,
-        "human" : -1,
-        "money" : -300 
-    },
-    "17" : {
-        "terrain" : [0,1,2,3,6,7,8,10],
-        "cost" : 70000,
-        "power" : 3000,
-        "human" : -20,
-        "money" : -6000
-    },
-    "18" : {
-        "terrain" : [0,1,2,3,6,7,8,10],
-        "cost" : 10000,
-        "power" : 1000,
-        "human" : -10,
-        "money" : -1500
-    },
-    "19" : {
-        "terrain" : [0,1,2,3,6,7,8,10],
-        "cost" : 50000,
-        "power" : -2000,
-        "human" : -1,
-        "money" : 5000
-    },
-    "21" : {
-        "terrain" : [3],
-        "cost" : 8000,
-        "power" : -500,
-        "human" : -10,
-        "money" : 2000
-    },
-    "22" : {
-        "terrain" : [4,5,7,8],
-        "cost" : 12000,
-        "power" : -200,
-        "human" : -5,
-        "money" : 2000
-    },
-    "23" : {
-        "terrain" : [1],
-        "cost" : 60000,
-        "power" : -2500,
-        "human" : -20,
-        "money" : 7000
-    },
-    "24" : {
-        "terrain" : [2],
-        "cost" : 8000,
-        "power" : -100,
-        "human" : -30,
-        "money" : 2000
-    },
-    "25" : {
-        "terrain" : [10],
-        "cost" : 0,
-        "power" : 0,
-        "human" : -2,
-        "money" : 1000
-    },
-    "31" : {
-        "terrain" : [0,1,2,3,6,7,8],
-        "cost" : 10000,
-        "power" : -200,
-        "human" : 0,
-        "money" : 0
-    },
-    "32" : {
-        "terrain" : [0,1,2,3,6,7,8],
-        "cost" : 25000,
-        "power" : -400,
-        "human" : 0,
-        "money" : 0
-    },
-    "33" : {
-        "terrain" : [0,1,2,3,6,7,8],
-        "cost" : 60000,
-        "power" : -500,
-        "human" : 0,
-        "money" : 0
-    },
-    "34" : {
-        "terrain" : [0,1,2,3,6,7,8],
-        "cost" : 8000,
-        "power" : -100,
-        "human" : -2,
-        "money" : -500
-    }
+    "structures" : [
+        {
+            "ID" : 1,
+            "Name" : "Thermal Power Plant",
+            "Terrain" : [1,2,4,32,64,128,512],
+            "Cost" : 10000,
+            "Power" : 1000,
+            "Human" : -10,
+            "Money" : -1500,
+            "Size" : 4
+        },
+        {
+            "ID" : 2,
+            "Name" : "Water Power Plant",
+            "Terrain" : [16,128],
+            "Cost" : 15000,
+            "Power" : 750,
+            "Human" : -5,
+            "Money" : -500,
+            "Size" : 4
+        },
+        {
+            "ID" : 3,
+            "Name" : "Wind Power Plant",
+            "Terrain" : [2,64],
+            "Cost" : 15000,
+            "Power" : 250,
+            "Human" : -1,
+            "Money" : -300,
+            "Size" : 4
+        },
+        {
+            "ID" : 4,
+            "Name" : "Tidal Power Plant",
+            "Terrain" : [8,64],
+            "Cost" : 10000,
+            "Power" : 500,
+            "Human" : -2,
+            "Money" : -500,
+            "Size" : 4
+        },
+        {
+            "ID" : 5,
+            "Name" : "Solar Power Plant",
+            "Terrain" : [1],
+            "Cost" : 20000,
+            "Power" : 500,
+            "Human" : -1,
+            "Money" : -200,
+            "Size" : 4
+        },
+        {
+            "ID" : 6,
+            "Name" : "GeoThermal Power Plant",
+            "Terrain" : [512],
+            "Cost" : 20000,
+            "Power" : 500,
+            "Human" : -1,
+            "Money" : -300,
+            "Size" : 4
+        },
+        {
+            "ID" : 7,
+            "Name" : "Nuclear Power Plant",
+            "Terrain" : [64],
+            "Cost" : 70000,
+            "Power" : 3000,
+            "Human" : -20,
+            "Money" : -6000,
+            "Size" : 8
+        },
+        {
+            "ID" : 10,
+            "Name" : "BitCoin Miner",
+            "Terrain" : [1,2,4,32,64,128,512],
+            "Cost" : 5000,
+            "Power" : -2000,
+            "Human" : -1,
+            "Money" : 5000,
+            "Size" : 2
+        },
+        {
+            "ID" : 11,
+            "Name" : "Sawmill",
+            "Terrain" : [4],
+            "Cost" : 8000,
+            "Power" : -500,
+            "Human" : -10,
+            "Money" : 2000,
+            "Size" : 4
+        },
+        {
+            "ID" : 12,
+            "Name" : "Fish Farm",
+            "Terrain" : [8,16,64,128],
+            "Cost" : 12000,
+            "Power" : -200,
+            "Human" : -5,
+            "Money" : 2000,
+            "Size" : 4
+        },
+        {
+            "ID" : 13,
+            "Name" : "IC Fab",
+            "Terrain" : [1],
+            "Cost" : 60000,
+            "Power" : -2500,
+            "Human" : -20,
+            "Money" : 7000,
+            "Size" : 4
+        },
+        {
+            "ID" : 14,
+            "Name" : "Pasture",
+            "Terrain" : [2],
+            "Cost" : 8000,
+            "Power" : -100,
+            "Human" : -30,
+            "Money" : 2000,
+            "Size" : 4
+        },
+        {
+            "ID" : 15,
+            "Name" : "Hotspring",
+            "Terrain" : [512],
+            "Cost" : 0,
+            "Power" : 0,
+            "Human" : -2,
+            "Money" : 1000,
+            "Size" : 4
+        },
+        {
+            "ID" : 21,
+            "Name" : "Military Camp (small)",
+            "Terrain" : [1,2,4,32,64,128],
+            "Cost" : 10000,
+            "Power" : -200,
+            "Human" : 0,
+            "Money" : 0,
+            "Size" : 2
+        },
+        {
+            "ID" : 22,
+            "Name" : "Military Camp (medium)",
+            "Terrain" : [1,2,4,32,64,128],
+            "Cost" : 25000,
+            "Power" : -400,
+            "Human" : 0,
+            "Money" : 0,
+            "Size" : 4
+        },
+        {
+            "ID" : 23,
+            "Name" : "Military Camp (large)",
+            "Terrain" : [1,2,4,32,64,128],
+            "Cost" : 60000,
+            "Power" : -500,
+            "Human" : 0,
+            "Money" : 0,
+            "Size" : 8
+        },
+        {
+            "ID" : 24,
+            "Name" : "Observatory",
+            "Terrain" : [1,2,4,32,64,128,512],
+            "Cost" : 8000,
+            "Power" : -100,
+            "Human" : -2,
+            "Money" : -500,
+            "Size" : 2
+        }
+    ]
 }
