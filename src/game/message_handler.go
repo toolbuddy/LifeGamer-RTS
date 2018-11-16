@@ -58,12 +58,30 @@ func (mHandler MessageHandler) start() {
                 continue
             }
 
-            mHandler.onMessage[payload.Msg_type](msg_wrapper)
+            go mHandler.onMessage[payload.Msg_type](msg_wrapper)
         }
     }()
 }
 
 func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
+    username := request.Username
+
+    _, err := mHandler.playerDB.Get(username)
+    if err != nil {
+        // Username not found! Send HomePointRequest to client
+        b, err := json.Marshal(comm.Payload { comm.HomePointRequest, username })
+        if err != nil {
+            log.Println(err)
+        }
+
+        msg := request
+        msg.SendTo = comm.SendToClient
+        msg.Data = b
+
+        mHandler.mbus.Write("ws", msg)
+        return
+    }
+
     mHandler.onPlayerDataRequest(request)
     mHandler.pLogin <- ClientInfo { request.Cid, request.Username }
 }
@@ -73,24 +91,8 @@ func (mHandler MessageHandler) onPlayerDataRequest(request comm.MessageWrapper) 
 
     player_data, err := mHandler.playerDB.Get(username)
     if err != nil {
-        // Username not found! Create new player in PlayerDB
-        player_data.UpdateTime = time.Now().Unix()
-
-        if err := mHandler.playerDB.Put(username, player_data); err != nil {
-            log.Println(err)
-        }
-    }
-
-    if !player_data.Initialized {
-        if b, err := json.Marshal(comm.Payload { comm.HomePointRequest, username }); err != nil {
-            log.Println(err)
-        } else {
-            msg := request
-            msg.SendTo = comm.SendToClient
-            msg.Data = b
-
-            defer mHandler.mbus.Write("ws", msg)
-        }
+        log.Println(err)
+        return
     }
 
     // Send player data to WsServer
@@ -114,14 +116,6 @@ func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 }
 
 func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper) {
-    username := response.Username
-
-    player_data, err := mHandler.playerDB.Get(username)
-    if err != nil {
-        log.Println(err)
-        return
-    }
-
     var payload struct {
         comm.Payload
         Home util.Point
@@ -132,16 +126,21 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
         return
     }
 
-    player_data.Update()
-    player_data.Home = payload.Home
-    player_data.Initialized = true
+    username := response.Username
 
-    if err := mHandler.playerDB.Put(username, player_data); err != nil {
-        log.Println(err)
-        return
+    player_data, err := mHandler.playerDB.Get(username)
+    if err != nil {
+        // Username not found! Create new player in PlayerDB
+        player_data.Home = payload.Home
+        player_data.UpdateTime = time.Now().Unix()
+
+        if err := mHandler.playerDB.Put(username, player_data); err != nil {
+            log.Println(err)
+        }
+
+        mHandler.onPlayerDataRequest(response)
+        mHandler.pLogin <- ClientInfo { response.Cid, response.Username }
     }
-
-    mHandler.dChanged <- ClientInfo { response.Cid, response.Username }
 }
 
 func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
