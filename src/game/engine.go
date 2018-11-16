@@ -36,18 +36,18 @@ func NewGameEngine() (engine *GameEngine, err error) {
         return
     }
 
-    pChanged := make(chan ClientInfo, 256)
+    dChanged := make(chan ClientInfo, 256)
     pLogin   := make(chan ClientInfo, 256)
     pLogout  := make(chan ClientInfo, 256)
 
-    handler  := NewMessageHandler(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
-    notifier := NewNotifier(playerDB, worldDB, mbus, pChanged, pLogin, pLogout)
+    handler  := NewMessageHandler(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
+    notifier := NewNotifier(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
 
     engine = &GameEngine { playerDB: playerDB, worldDB: worldDB, handler: handler, notifier: notifier, mbus: mbus }
     return
 }
 
 func (engine GameEngine) Start() {
-    engine.handler.Start()
+    engine.handler.start()
     engine.notifier.Start()
 }

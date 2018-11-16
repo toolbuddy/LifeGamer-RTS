@@ -100,10 +100,18 @@ func (server *WsServer) Start(port int) {
             cid := msg_wrapper.Cid
             username := msg_wrapper.Username
 
-            switch msg_wrapper.Sendto {
+            // check the username and cid for security
+            if user, ok := server.clients[username]; !ok {
+                continue
+            } else if _, ok := user[cid]; !ok {
+                continue
+            }
+
+            switch msg_wrapper.SendTo {
             case SendToClient:
                 if user, ok := server.clients[username]; ok {
-                    if err := user[cid].WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
+                    if client, ok := user[cid]; ok {
+                        err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
                         if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
                             log.Println(err)
                         }
@@ -112,20 +120,18 @@ func (server *WsServer) Start(port int) {
             case SendToUser:
                 if user, ok := server.clients[username]; ok {
                     for _, client := range user {
-                        if err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
-                            if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-                                log.Println(err)
-                            }
+                        err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
+                        if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+                            log.Println(err)
                         }
                     }
                 }
             case Broadcast:
                 for _, user := range server.clients {
                     for _, client := range user {
-                        if err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data); err != nil {
-                            if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-                                log.Println(err)
-                            }
+                        err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
+                        if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+                            log.Println(err)
                         }
                     }
                 }

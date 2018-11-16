@@ -96,7 +96,7 @@ const (
 type MessageWrapper struct {
     Cid         int
     Username    string
-    Sendto      SendingMethod
+    SendTo      SendingMethod
     Data        []byte
 }
 
