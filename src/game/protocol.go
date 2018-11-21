@@ -2,6 +2,7 @@ package game
 
 import (
     "comm"
+    "util"
     "game/player"
     "game/world"
 )
@@ -24,6 +25,13 @@ type PlayerDataPayload struct {
 type MapDataPayload struct {
     comm.Payload
     Chunks []world.Chunk
+}
+
+type MinimapDataPayload struct {
+    comm.Payload
+    Size util.Size
+    Terrain [][]world.TerrainType
+    Owner   [][]string
 }
 
 type BuildingPayload struct {

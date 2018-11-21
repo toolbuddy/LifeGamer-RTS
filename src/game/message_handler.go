@@ -44,6 +44,7 @@ func NewMessageHandler(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *
     mHandler.onMessage[comm.LogoutRequest]     = mHandler.onLogoutRequest
     mHandler.onMessage[comm.HomePointResponse] = mHandler.onHomePointResponse
     mHandler.onMessage[comm.MapDataRequest]    = mHandler.onMapDataRequest
+    mHandler.onMessage[comm.BuildRequest]      = mHandler.onBuildRequest
 
     return mHandler
 }
@@ -146,7 +147,7 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
 func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
     var payload struct {
         comm.Payload
-        Poss []util.Point
+        ChunkPos []util.Point
     }
 
     if err := json.Unmarshal(request.Data, &payload); err != nil {
@@ -156,7 +157,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 
     var chunks []world.Chunk = []world.Chunk {}
 
-    for _, pos := range payload.Poss {
+    for _, pos := range payload.ChunkPos {
         chunk, err := mHandler.worldDB.Get(pos.String())
         if err != nil {
             chunk = *world.NewChunk(pos)
@@ -201,7 +202,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         }
 
         // Update clients who are watching this chunk
-        for _, pos := range payload.Poss {
+        for _, pos := range payload.ChunkPos {
             if infos, ok := mHandler.chunk2Clients[pos]; !ok {
                 mHandler.chunk2Clients[pos] = []ClientInfo { client_info }
             } else {
@@ -210,7 +211,32 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         }
 
         // Update where the client is watching
-        mHandler.client2Chunks[client_info] = payload.Poss
+        mHandler.client2Chunks[client_info] = payload.ChunkPos
+
+        // TODO: move this part to mapDataUpdate (minimap update part)
+        msg = request
+        msg.SendTo = comm.SendToUser
+        var mmap_data MinimapDataPayload
+        mmap_data.Msg_type = comm.MinimapDataResponse
+        mmap_data.Size = util.Size{50, 50}
+        mmap_data.Terrain = make([][]world.TerrainType, 50)
+        mmap_data.Owner = make([][]string, 50)
+        for i := 0;i < 50;i++ {
+            mmap_data.Terrain[i] = make([]world.TerrainType, 50)
+            mmap_data.Owner[i] = make([]string, 50)
+            for j := 0;j < 50;j++ {
+                mmap_data.Terrain[i][j] = world.Grass
+                mmap_data.Owner[i][j] = "korea"
+            }
+        }
+        b, err = json.Marshal(mmap_data)
+        if err != nil {
+            log.Println(err)
+            return
+        }
+
+        msg.Data = b
+        mHandler.mbus.Write("ws", msg)
     }
 }
 
@@ -249,4 +275,15 @@ func (mHandler MessageHandler) mapDataUpdate(poss []util.Point) {
 
         mHandler.mbus.Write("ws", msg)
     }
+}
+
+func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
+    var payload BuildingPayload
+
+    if err := json.Unmarshal(request.Data, &payload); err != nil {
+        log.Println(err)
+        return
+    }
+
+    log.Println(payload.Username + string(payload.Action) + " at chunk " + payload.Structure.Chunk.String() + ", Pos " + payload.Structure.Pos.String())
 }

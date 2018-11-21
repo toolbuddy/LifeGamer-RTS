@@ -2,3 +2,4 @@
 pkg/
 src/github.com/
 *.json
+test.go

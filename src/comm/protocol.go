@@ -29,6 +29,7 @@ const (
     LoginResponse
     PlayerDataResponse
     MapDataResponse
+    MinimapDataResponse
 
     // Response from client
     HomePointResponse
@@ -49,6 +50,7 @@ var msg_type = []string{
     "LoginResponse",
     "PlayerDataResponse",
     "MapDataResponse",
+    "MinimapDataResponse",
 
     // Response from client
     "HomePointResponse",

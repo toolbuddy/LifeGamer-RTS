@@ -18,7 +18,7 @@ const (
 
 type Structure struct {
     ID          int             // Structure type ID
-    Name        string
+    Name        string          // Name for frontend printing
     Status      SStatus
 
     Human       int             // + for provide, - for occupy
