@@ -4,10 +4,19 @@ import (
     "comm"
     //"bufio"
     //"os"
+    "flag"
     "game"
 )
 
 func main() {
+    genJson := flag.Bool("genjson", false, "Generate protocal json")
+    flag.Parse()
+
+    if *genJson {
+        comm.MsgType2Json()
+        return
+    }
+
     server, _ := comm.NewWsServer()
     server.Start(9999)
 
