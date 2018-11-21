@@ -20,6 +20,7 @@ const (
     PlayerDataRequest
     MapDataRequest
     LogoutRequest
+    BuildRequest
 
     // Request from server
     HomePointRequest
@@ -39,6 +40,7 @@ var msg_type = []string{
     "PlayerDataRequest",
     "MapDataRequest",
     "LogoutRequest",
+    "BuildRequest",
 
     // Request from server
     "HomePointRequest",

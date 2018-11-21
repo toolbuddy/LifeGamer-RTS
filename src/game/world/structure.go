@@ -5,18 +5,21 @@ import (
     "encoding/json"
 )
 
+// Structure status
+type SStatus string
+
 const (
-    Running = "Running"         // Running normally
-    Building = "Building"       // building or upgrading
-    Destucting = "Destucting"   // Being destruting by player
-    Destroyed = "Destroyed"     // Destroyed after war
-    Halted = "Halted"           // Halt because insufficient power
+    Running     SStatus = "Running"    // Running normally
+    Building    SStatus = "Building"   // building or upgrading
+    Destucting  SStatus = "Destucting" // Being destruting by player
+    Destroyed   SStatus = "Destroyed"  // Destroyed after war
+    Halted      SStatus = "Halted"     // Halt because insufficient power
 )
 
 type Structure struct {
-    ID          int
+    ID          int             // Structure type ID
     Name        string
-    Status      string
+    Status      SStatus
 
     Human       int             // + for provide, - for occupy
     Money       int             // + for produce, - for consume
@@ -73,6 +76,7 @@ func LoadDefinition(structDef []byte) (structList []Structure, err error) {
             structure.Terrain |= t
         }
 
+        // TODO: Support two-dimention size
         structure.Size = util.Size { W: s.Size, H: s.Size }
 
         structList = append(structList, structure)
