@@ -2,7 +2,6 @@ package world
 
 import (
     "util"
-    "encoding/json"
 )
 
 // Structure status
@@ -39,48 +38,4 @@ type Structure struct {
     Size        util.Size
 
     Terrain     int            // vaild construct terrain
-}
-
-type strProto struct {
-    ID int
-    Name string
-    Terrain []int
-    Cost int
-    Power int
-    Human int
-    Money int
-    Size uint
-}
-
-type strProtoList struct {
-    Structures []strProto
-}
-
-func LoadDefinition(structDef []byte) (structList []Structure, err error) {
-    var protoList strProtoList
-    if err = json.Unmarshal(structDef, &protoList); err != nil {
-        return
-    }
-
-    for _, s := range protoList.Structures {
-        var structure Structure
-
-        structure.ID = s.ID
-        structure.Name = s.Name
-        structure.Cost = s.Cost
-        structure.Power = s.Power
-        structure.Human = s.Human
-        structure.Money = s.Money
-
-        for _, t := range s.Terrain {
-            structure.Terrain |= t
-        }
-
-        // TODO: Support two-dimention size
-        structure.Size = util.Size { W: s.Size, H: s.Size }
-
-        structList = append(structList, structure)
-    }
-
-    return
 }

@@ -188,6 +188,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         client_info := ClientInfo { request.Cid, request.Username }
 
         // Get chunks where this client was watching
+        // FIXME: Data race here
         if poss, ok := mHandler.client2Chunks[client_info]; ok {
             for _, pos := range poss {
                 // Remove client from chunk watching list
@@ -214,6 +215,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         mHandler.client2Chunks[client_info] = payload.ChunkPos
 
         // TODO: move this part to mapDataUpdate (minimap update part)
+/*
         msg = request
         msg.SendTo = comm.SendToUser
         var mmap_data MinimapDataPayload
@@ -237,6 +239,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 
         msg.Data = b
         mHandler.mbus.Write("ws", msg)
+*/
     }
 }
 
@@ -279,11 +282,24 @@ func (mHandler MessageHandler) mapDataUpdate(poss []util.Point) {
 
 func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
     var payload BuildingPayload
+    var err error
 
-    if err := json.Unmarshal(request.Data, &payload); err != nil {
+    if err = json.Unmarshal(request.Data, &payload); err != nil {
         log.Println(err)
         return
     }
 
-    log.Println(payload.Username + string(payload.Action) + " at chunk " + payload.Structure.Chunk.String() + ", Pos " + payload.Structure.Pos.String())
+    // Perform action
+    switch payload.Action {
+    case Build:
+        world.CompleteStructure(&payload.Structure)
+        log.Printf("world: %s request %s at chunk %s, pos %s", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
+
+        err = world.BuildStructure(mHandler.worldDB, payload.Structure, payload.Username)
+    }
+
+    // Handle action error
+    if err != nil {
+        log.Println(err)
+    }
 }

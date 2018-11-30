@@ -6,6 +6,7 @@ import (
     //"os"
     "flag"
     "game"
+    "util"
 )
 
 func main() {
@@ -21,6 +22,7 @@ func main() {
     server.Start(9999)
 
     engine, _ := game.NewGameEngine()
+    engine.LoadTerrain(util.Point{-10, -10}, util.Point{9, 9}, "map.json")
     engine.Start()
 
     //reader := bufio.NewReader(os.Stdin)

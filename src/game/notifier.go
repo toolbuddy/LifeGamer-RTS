@@ -116,5 +116,5 @@ func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusN
         mbus.Write("ws", msg)
     }
 
-    log.Println("Notifier: Notify loop stopped")
+    log.Printf("Notifier: Notify loop for %v stopped", username)
 }

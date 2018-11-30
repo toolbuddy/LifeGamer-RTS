@@ -1,9 +1,12 @@
 package game
 
 import (
+    "util"
     "comm"
     "game/player"
     "game/world"
+    "io/ioutil"
+    "encoding/json"
 )
 
 type ClientInfo struct {
@@ -50,4 +53,33 @@ func NewGameEngine() (engine *GameEngine, err error) {
 func (engine GameEngine) Start() {
     engine.handler.start()
     engine.notifier.Start()
+}
+
+func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename string) (err error) {
+    mapdata := struct {
+        Unit [][]world.TerrainType
+    } {}
+
+    mapjson, _ := ioutil.ReadFile(filename)
+    json.Unmarshal(mapjson, &mapdata)
+
+    for _, p := range util.InRange(from, to) {
+        chunk, err := engine.worldDB.Get(p.String())
+        if err != nil {
+            chunk = *world.NewChunk(p)
+        }
+
+        for i := 0; uint(i) < world.ChunkSize.H; i++ {
+            for j := 0; uint(j) < world.ChunkSize.W; j++ {
+                real_X := (p.X + int(world.WorldSize.W) / 2) * int(world.ChunkSize.W) + i
+                real_Y := (p.Y + int(world.WorldSize.H) / 2) * int(world.ChunkSize.H) + j
+                chunk.Blocks[i][j].Terrain = mapdata.Unit[real_Y][real_X]
+            }
+        }
+
+        chunk.Update()
+        engine.worldDB.Put(p.String(), chunk)
+    }
+
+    return
 }

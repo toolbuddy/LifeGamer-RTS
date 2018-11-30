@@ -15,6 +15,7 @@ const (
     Upgrade     SAction = "Upgrade"
     Destruct    SAction = "Destruct"
     Repair      SAction = "Repair"
+    Restart     SAction = "Restart"
 )
 
 type PlayerDataPayload struct {

@@ -155,6 +155,7 @@ func (server *WsServer) Start(port int) {
                 }
 
                 user[cid] = client
+                log.Printf("Ws: New client for user %s connected (cid: %v)", username, cid)
 
                 // Start goroutine to handle massage from each websocket client ( WsClient read )
                 go func() {
