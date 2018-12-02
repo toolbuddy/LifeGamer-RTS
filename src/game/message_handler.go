@@ -8,6 +8,7 @@ import (
     "comm"
     "time"
     "util"
+    "errors"
 )
 
 // Function pointer type for common onMessage function
@@ -128,15 +129,39 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
     }
 
     username := response.Username
+    log.Printf("User %s select (%v) as homepoint", username, payload.Home)
 
     player_data, err := mHandler.playerDB.Get(username)
     if err != nil {
+        // Check chunk is available
+        chunk, err := mHandler.worldDB.Get(payload.Home.String())
+        if err != nil {
+            log.Println(err)
+            return
+        }
+
+        if chunk.Owner != "" {
+            log.Println("Chunk occupied, cannot use here as new home.")
+            return
+        }
+
+        // Write chunk change into DB
+        chunk.Owner = username
+        if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
+            log.Println(err)
+            return
+        }
+
         // Username not found! Create new player in PlayerDB
         player_data.Home = payload.Home
         player_data.UpdateTime = time.Now().Unix()
 
+        // TODO: Set default money! this is for testing
+        player_data.Money = 100000
+
         if err := mHandler.playerDB.Put(username, player_data); err != nil {
             log.Println(err)
+            return
         }
 
         mHandler.onPlayerDataRequest(response)
@@ -289,17 +314,78 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
         return
     }
 
-    // Perform action
-    switch payload.Action {
-    case Build:
-        world.CompleteStructure(&payload.Structure)
-        log.Printf("world: %s request %s at chunk %s, pos %s", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
+    log.Printf("world: %s request %s at chunk (%s), pos (%s)", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
 
-        err = world.BuildStructure(mHandler.worldDB, payload.Structure, payload.Username)
-    }
+    // Retrieve info
+    world.CompleteStructure(&payload.Structure)
 
-    // Handle action error
+    user, err := mHandler.playerDB.Get(payload.Username)
     if err != nil {
         log.Println(err)
+        return
     }
+    user.Update()
+
+    chunk, err := mHandler.worldDB.Get(payload.Structure.Chunk.String())
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    // Check user's permission
+    if payload.Username != chunk.Owner {
+        log.Println("User do not own the chunk.")
+        return
+    }
+
+    switch payload.Action {
+    case Build:
+        if user.Money < int64(payload.Structure.Cost) {
+            err = errors.New("User do not have enough money.")
+        }
+    //case Upgrade:
+    //case Destruct:
+    //case Repair:
+    //case Restart:
+    }
+
+    // Handle player error
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    // Check world status & perform action
+    switch payload.Action {
+    case Build:
+        err = world.BuildStructure(mHandler.worldDB, payload.Structure)
+    //case Upgrade:
+    case Destruct:
+        err = world.DestuctStructure(mHandler.worldDB, payload.Structure)
+    //case Repair:
+    //case Restart:
+    }
+
+    // Handle world error
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    // TODO: only power and money part finished
+    if payload.Structure.Power > 0 {
+        user.PowerMax += int64(payload.Structure.Power)
+    } else {
+        user.Power += int64(-(payload.Structure.Power))
+    }
+
+    // TODO: Dealing with upgrade cost
+    user.Money -= int64(payload.Structure.Cost)
+    user.MoneyRate += int64(payload.Structure.Money)
+
+    // Write user into database
+    mHandler.playerDB.Put(payload.Username, user)
+
+    // TODO: Chech whether this work for all users
+    mHandler.dChanged <- ClientInfo { request.Cid, request.Username }
 }

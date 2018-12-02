@@ -83,7 +83,6 @@ func (notifier Notifier) Start() {
 }
 
 func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusNode, db *player.PlayerDB) {
-    cid := client_info.cid
     username := client_info.username
 
     player_data, err := db.Get(username)
@@ -111,7 +110,7 @@ func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusN
             continue
         }
 
-        msg := comm.MessageWrapper { cid, username, comm.SendToUser, b }
+        msg := comm.MessageWrapper { client_info.cid, username, comm.SendToUser, b }
 
         mbus.Write("ws", msg)
     }

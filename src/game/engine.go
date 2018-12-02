@@ -14,9 +14,13 @@ type ClientInfo struct {
     username    string
 }
 
-type GameEngine struct {
+type GameDB struct {
     playerDB    *player.PlayerDB
     worldDB     *world.WorldDB
+}
+
+type GameEngine struct {
+    GameDB
     handler     *MessageHandler
     notifier    *Notifier
     mbus        *comm.MBusNode
@@ -46,7 +50,7 @@ func NewGameEngine() (engine *GameEngine, err error) {
     handler  := NewMessageHandler(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
     notifier := NewNotifier(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
 
-    engine = &GameEngine { playerDB: playerDB, worldDB: worldDB, handler: handler, notifier: notifier, mbus: mbus }
+    engine = &GameEngine { GameDB{ playerDB, worldDB }, handler, notifier, mbus }
     return
 }
 

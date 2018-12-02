@@ -6,6 +6,10 @@ type Point struct {
     X, Y int
 }
 
+type Size struct {
+    W, H uint
+}
+
 func (point Point) String() string {
     return fmt.Sprintf("%d,%d", point.X, point.Y)
 }
@@ -37,6 +41,13 @@ func InRange(from Point, to Point) (res []Point) {
     return
 }
 
-type Size struct {
-    W, H uint
+// Return a list contains all points in size range (from is left-upper point)
+func InSizeRange(from Point, size Size) (res []Point) {
+    for dy := 0; uint(dy) < size.H; dy++ {
+        for dx := 0; uint(dx) < size.W; dx++ {
+            res = append(res, Point { X: from.X + dx, Y: from.Y + dy })
+        }
+    }
+
+    return
 }

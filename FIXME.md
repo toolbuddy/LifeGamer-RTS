@@ -1,1 +1,2 @@
 - When multi client connected, close one client will stop all notifier actions
+- Money not reset when destroy

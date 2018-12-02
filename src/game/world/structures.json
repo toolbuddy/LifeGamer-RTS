@@ -8,7 +8,8 @@
             "Power" : 1000,
             "Human" : -10,
             "Money" : -1500,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 2,
@@ -18,7 +19,8 @@
             "Power" : 750,
             "Human" : -5,
             "Money" : -500,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 3,
@@ -28,7 +30,8 @@
             "Power" : 250,
             "Human" : -1,
             "Money" : -300,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 4,
@@ -38,7 +41,8 @@
             "Power" : 500,
             "Human" : -2,
             "Money" : -500,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 5,
@@ -48,7 +52,8 @@
             "Power" : 500,
             "Human" : -1,
             "Money" : -200,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 6,
@@ -58,7 +63,8 @@
             "Power" : 500,
             "Human" : -1,
             "Money" : -300,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 7,
@@ -68,7 +74,8 @@
             "Power" : 3000,
             "Human" : -20,
             "Money" : -6000,
-            "Size" : 8
+            "Size" : 8,
+            "MaxLevel": 5
         },
         {
             "ID" : 10,
@@ -78,7 +85,8 @@
             "Power" : -2000,
             "Human" : -1,
             "Money" : 5000,
-            "Size" : 2
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 11,
@@ -88,7 +96,8 @@
             "Power" : -500,
             "Human" : -10,
             "Money" : 2000,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 12,
@@ -98,7 +107,8 @@
             "Power" : -200,
             "Human" : -5,
             "Money" : 2000,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 13,
@@ -108,7 +118,8 @@
             "Power" : -2500,
             "Human" : -20,
             "Money" : 7000,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 14,
@@ -118,7 +129,8 @@
             "Power" : -100,
             "Human" : -30,
             "Money" : 2000,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 15,
@@ -128,7 +140,8 @@
             "Power" : 0,
             "Human" : -2,
             "Money" : 1000,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 5
         },
         {
             "ID" : 21,
@@ -138,7 +151,8 @@
             "Power" : -200,
             "Human" : 0,
             "Money" : 0,
-            "Size" : 2
+            "Size" : 2,
+            "MaxLevel": 1
         },
         {
             "ID" : 22,
@@ -148,7 +162,8 @@
             "Power" : -400,
             "Human" : 0,
             "Money" : 0,
-            "Size" : 4
+            "Size" : 4,
+            "MaxLevel": 1
         },
         {
             "ID" : 23,
@@ -158,7 +173,8 @@
             "Power" : -500,
             "Human" : 0,
             "Money" : 0,
-            "Size" : 8
+            "Size" : 8,
+            "MaxLevel": 1
         },
         {
             "ID" : 24,
@@ -168,7 +184,8 @@
             "Power" : -100,
             "Human" : -2,
             "Money" : -500,
-            "Size" : 2
+            "Size" : 2,
+            "MaxLevel": 5
         }
     ]
 }

@@ -32,6 +32,12 @@ type Chunk struct {
     UpdateTime  int64       // Unix time
 }
 
+// Get db key of chunk
+func (chunk Chunk) Key() string {
+    return chunk.Pos.String()
+}
+
+
 func init() {
     StructMap = make(map[int]Structure)
     err := loadStructures("/home/hmkrl/Documents/NCKU_Lectures/GO/LifeGamer-RTS/src/game/world/structures.json")
@@ -64,6 +70,7 @@ func loadStructures(filename string) (err error) {
         Human int
         Money int
         Size uint
+        MaxLevel int
     }
 
     protoList := struct {
@@ -85,6 +92,8 @@ func loadStructures(filename string) (err error) {
         structure.Power = s.Power
         structure.Human = s.Human
         structure.Money = s.Money
+        structure.Level = 1
+        structure.MaxLevel = s.MaxLevel
 
         for _, t := range s.Terrain {
             structure.Terrain |= t
@@ -106,24 +115,22 @@ func (chunk *Chunk) Update() {
 }
 
 func (chunk Chunk) Accepts(str Structure) (ok bool, err error) {
-    var i uint
-    var j uint
+    var terr_ok bool
 
-    // Check terrain accepts structure
-    var terr_ok bool = false
+    for _, point := range util.InSizeRange(str.Pos, str.Size) {
+        if uint(point.X) >= ChunkSize.W || uint(point.Y) >= ChunkSize.H {
+            err = errors.New("Structure out of chunk")
+            return
+        }
+        // Check available space
+        if !chunk.Blocks[point.X][point.Y].Empty {
+            err = errors.New("Map occupied")
+            return
+        }
 
-    for i = 0; i < str.Size.H; i++ {
-        for j = 0; j < str.Size.W; j++ {
-            // Check available space
-            if !chunk.Blocks[str.Pos.X][str.Pos.Y].Empty {
-                err = errors.New("Map occupied")
-                return
-            }
-
-            // Check terrain
-            if !terr_ok && chunk.Blocks[str.Pos.X][str.Pos.Y].Terrain.Accepts(str.Terrain) {
-                terr_ok = true
-            }
+        // Check terrain
+        if !terr_ok && chunk.Blocks[point.X][point.Y].Terrain.Accepts(str.Terrain) {
+            terr_ok = true
         }
     }
 
@@ -149,7 +156,7 @@ func CompleteStructure(str *Structure) {
     str.Pos = pos
 }
 
-func BuildStructure(wdb *WorldDB, str Structure, owner string) (err error) {
+func BuildStructure(wdb *WorldDB, str Structure) (err error) {
     target_chunk, err := wdb.Get(str.Chunk.String())
 
     // WorldDB get error
@@ -158,17 +165,70 @@ func BuildStructure(wdb *WorldDB, str Structure, owner string) (err error) {
     }
 
     // Permission denied
-    if target_chunk.Owner != owner {
-        err = errors.New("User do not own the chunk")
+    // TODO: Move user check part to game engine
+    //if target_chunk.Owner != owner {
+    //err = errors.New("User do not own the chunk")
+    //return
+    //}
+
+    // Check available space & terrain
+    if ok, err := target_chunk.Accepts(str); !ok {
+        return err
+    }
+
+    // Check finished, build the structure
+
+    // Set map occupied
+    for _, block := range util.InSizeRange(str.Pos, str.Size) {
+        target_chunk.Blocks[block.X][block.Y].Empty = false
+    }
+
+    str.Status = Building
+
+    // Add structure
+    target_chunk.Structures = append(target_chunk.Structures, str)
+
+    // Save to database
+    wdb.Put(target_chunk.Key(), target_chunk)
+
+    return
+}
+
+func DestuctStructure(wdb *WorldDB, str Structure) (err error) {
+    target_chunk, err := wdb.Get(str.Chunk.String())
+
+    // WorldDB get error
+    if err != nil {
         return
     }
 
-    // Check available space & terrain
-    if ok, err := target_chunk.Accepts(str); ok {
-        //TODO: Build structure
-    } else {
-        return err
+    // Check structure exists, returns -1 if not found
+    index := func () int {
+        for index, s := range target_chunk.Structures {
+            if s.Pos == str.Pos && s.ID == str.ID {
+                return index
+            }
+        }
+        return -1
+    }()
+
+    if index == -1 {
+        err = errors.New("Structure not found")
+        return
     }
+
+    // Check finished, destroy the structure
+
+    // Set map free
+    for _, block := range util.InSizeRange(str.Pos, str.Size) {
+        target_chunk.Blocks[block.X][block.Y].Empty = true
+    }
+
+    // delete structure
+    target_chunk.Structures = append(target_chunk.Structures[:index], target_chunk.Structures[index+1:]...)
+
+    // Save to database
+    wdb.Put(target_chunk.Key(), target_chunk)
 
     return
 }
