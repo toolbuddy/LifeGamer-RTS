@@ -17,10 +17,18 @@ type ClientInfo struct {
 type GameDB struct {
     playerDB    *player.PlayerDB
     worldDB     *world.WorldDB
+ }
+
+type CommonData struct {
+    online_players  map[string] chan<- string
+    chunk2Clients   map[util.Point] []ClientInfo    // store clients who are watching this chunk
+    client2Chunks   map[ClientInfo] []util.Point    // store chunks where the client is watching
 }
 
 type GameEngine struct {
     GameDB
+    CommonData
+
     handler     *MessageHandler
     notifier    *Notifier
     mbus        *comm.MBusNode
@@ -28,15 +36,23 @@ type GameEngine struct {
 
 func NewGameEngine() (engine *GameEngine, err error) {
     // TODO: use config to determine DB location
-    playerDB, err := player.NewPlayerDB("/tmp/pdb")
+    playerDB, err := player.NewPlayerDB("/tmp/gdb/pdb")
     if err != nil {
         return
     }
 
-    worldDB, err := world.NewWorldDB("/tmp/wdb")
+    worldDB, err := world.NewWorldDB("/tmp/gdb/wdb")
     if err != nil {
         return
     }
+
+    gameDB := GameDB { playerDB, worldDB }
+
+    online_players := make(map[string] chan<- string)
+    chunk2Clients  := make(map[util.Point] []ClientInfo)
+    client2Chunks  := make(map[ClientInfo] []util.Point)
+
+    common_data := CommonData { online_players, chunk2Clients, client2Chunks }
 
     mbus, err := comm.NewMBusNode("game")
     if err != nil {
@@ -47,10 +63,10 @@ func NewGameEngine() (engine *GameEngine, err error) {
     pLogin   := make(chan ClientInfo, 256)
     pLogout  := make(chan ClientInfo, 256)
 
-    handler  := NewMessageHandler(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
-    notifier := NewNotifier(playerDB, worldDB, mbus, dChanged, pLogin, pLogout)
+    handler  := NewMessageHandler(gameDB, common_data, mbus, dChanged, pLogin, pLogout)
+    notifier := NewNotifier(gameDB, common_data, mbus, dChanged, pLogin, pLogout)
 
-    engine = &GameEngine { GameDB{ playerDB, worldDB }, handler, notifier, mbus }
+    engine = &GameEngine { gameDB, common_data, handler, notifier, mbus }
     return
 }
 

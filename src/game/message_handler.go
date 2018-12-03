@@ -1,7 +1,6 @@
 package game
 
 import (
-    "game/player"
     "game/world"
     "log"
     "encoding/json"
@@ -16,28 +15,25 @@ type OnMessageFunc func(comm.MessageWrapper)
 
 // Use `NewMessageHandler` to constract a new message handler
 type MessageHandler struct {
-    onMessage       map[comm.MsgType] OnMessageFunc
-    playerDB        *player.PlayerDB
-    worldDB         *world.WorldDB
-    mbus            *comm.MBusNode
-    dChanged        chan<- ClientInfo
-    pLogin          chan<- ClientInfo
-    pLogout         chan<- ClientInfo
-    chunk2Clients   map[util.Point] []ClientInfo        // store clients who are watching this chunk
-    client2Chunks   map[ClientInfo] []util.Point        // store chunks where the client is watching
+    GameDB
+    CommonData
+
+    onMessage   map[comm.MsgType] OnMessageFunc
+    mbus        *comm.MBusNode
+    dChanged    chan<- ClientInfo
+    pLogin      chan<- ClientInfo
+    pLogout     chan<- ClientInfo
 }
 
-func NewMessageHandler(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, dChanged chan<- ClientInfo, pLogin chan<- ClientInfo, pLogout chan<- ClientInfo) *MessageHandler {
+func NewMessageHandler(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode, dChanged chan<- ClientInfo, pLogin chan<- ClientInfo, pLogout chan<- ClientInfo) *MessageHandler {
     mHandler := &MessageHandler {
-        onMessage: make(map[comm.MsgType] OnMessageFunc),
-        playerDB: playerDB,
-        worldDB: worldDB,
-        mbus: mbus,
-        dChanged: dChanged,
-        pLogin: pLogin,
-        pLogout: pLogout,
-        chunk2Clients: make(map[util.Point] []ClientInfo),
-        client2Chunks: make(map[ClientInfo] []util.Point),
+        gameDB,
+        common_data,
+        make(map[comm.MsgType] OnMessageFunc),
+        mbus,
+        dChanged,
+        pLogin,
+        pLogout,
     }
 
     mHandler.onMessage[comm.LoginRequest]      = mHandler.onLoginRequest

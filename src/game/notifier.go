@@ -5,33 +5,29 @@ import (
     "time"
     "comm"
     "game/player"
-    "game/world"
     "encoding/json"
 )
 
 // This file is used to notify when data updates
 
 type Notifier struct {
-    online_players  map[string] chan<- string
-    playerDB        *player.PlayerDB            // Receive data changed players from MessageHandler
-    worldDB         *world.WorldDB
+    GameDB
+    CommonData
+
+    mbus            *comm.MBusNode
     dChanged        <-chan ClientInfo
     pLogin          <-chan ClientInfo
     pLogout         <-chan ClientInfo           // used to send latest player data to servers
-    mbus            *comm.MBusNode
 }
 
-func NewNotifier(playerDB *player.PlayerDB, worldDB *world.WorldDB, mbus *comm.MBusNode, dChanged <-chan ClientInfo, pLogin <-chan ClientInfo, pLogout <-chan ClientInfo) (notifier *Notifier) {
-    online_players := make(map[string] chan<- string)
-
+func NewNotifier(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode, dChanged <-chan ClientInfo, pLogin <-chan ClientInfo, pLogout <-chan ClientInfo) (notifier *Notifier) {
     notifier = &Notifier {
-        online_players: online_players,
-        playerDB: playerDB,
-        worldDB: worldDB,
-        dChanged: dChanged,
-        pLogin: pLogin,
-        pLogout: pLogout,
-        mbus: mbus,
+        gameDB,
+        common_data,
+        mbus,
+        dChanged,
+        pLogin,
+        pLogout,
     }
 
     return
