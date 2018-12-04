@@ -7,6 +7,8 @@ import (
 
 type WorldDB struct {
     *leveldb.DB
+
+    Updated chan string // indicate which data have been changed
 }
 
 func NewWorldDB(path string) (wdb *WorldDB, err error) {
@@ -15,11 +17,16 @@ func NewWorldDB(path string) (wdb *WorldDB, err error) {
         return
     }
 
-    wdb = &WorldDB { db }
+    wdb = &WorldDB { db, make(chan string, 256) }
     return
 }
 
-func (wdb WorldDB) Delete(key string) error {
+func (wdb WorldDB) Close() error {
+    close(wdb.Updated)
+    return wdb.DB.Close()
+}
+
+ func (wdb WorldDB) Delete(key string) error {
     return wdb.DB.Delete([]byte(key), nil)
 }
 
@@ -33,11 +40,26 @@ func (wdb WorldDB) Get(key string) (value Chunk, err error) {
     return
 }
 
-func (wdb WorldDB) Put(key string, value Chunk) error {
-    b, err := json.Marshal(value)
+func (wdb WorldDB) Put(key string, value Chunk) (err error) {
+    err = wdb.Load(key, value)
     if err != nil {
-        return err
+        return
     }
 
-    return wdb.DB.Put([]byte(key), b, nil)
+    wdb.Updated <- key
+    return
+}
+
+func (wdb WorldDB) Load(key string, value Chunk) (err error) {
+    b, err := json.Marshal(value)
+    if err != nil {
+        return
+    }
+
+    err = wdb.DB.Put([]byte(key), b, nil)
+    if err != nil {
+        return
+    }
+
+    return
 }

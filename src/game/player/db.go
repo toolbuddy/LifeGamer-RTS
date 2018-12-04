@@ -7,6 +7,8 @@ import (
 
 type PlayerDB struct {
     *leveldb.DB
+
+    Updated chan string // indicate which data have been changed
 }
 
 func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
@@ -15,8 +17,13 @@ func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
         return
     }
 
-    pdb = &PlayerDB { db }
+    pdb = &PlayerDB { db, make(chan string, 256) }
     return
+}
+
+func (pdb PlayerDB) Close() error {
+    close(pdb.Updated)
+    return pdb.DB.Close()
 }
 
 func (pdb PlayerDB) Delete(key string) error {
@@ -33,11 +40,17 @@ func (pdb PlayerDB) Get(key string) (value Player, err error) {
     return
 }
 
-func (pdb PlayerDB) Put(key string, value Player) error {
+func (pdb PlayerDB) Put(key string, value Player) (err error) {
     b, err := json.Marshal(value)
     if err != nil {
-        return err
+        return
     }
 
-    return pdb.DB.Put([]byte(key), b, nil)
+    err = pdb.DB.Put([]byte(key), b, nil)
+    if err != nil {
+        return
+    }
+
+    pdb.Updated <- key
+    return
 }

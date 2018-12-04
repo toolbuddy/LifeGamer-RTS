@@ -40,7 +40,7 @@ func (chunk Chunk) Key() string {
 
 func init() {
     StructMap = make(map[int]Structure)
-    err := loadStructures("/home/hmkrl/Documents/NCKU_Lectures/GO/LifeGamer-RTS/src/game/world/structures.json")
+    err := loadStructures("src/game/world/structures.json")
     if err != nil {
         log.Println(err)
     }
