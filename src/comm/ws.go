@@ -6,6 +6,7 @@ import (
     "net/http"
     "github.com/gorilla/websocket"
     "encoding/json"
+    "sync"
 )
 
 // Struct to store connected client
@@ -23,6 +24,7 @@ type WsServer struct {
     login_queue     chan *WsClient                  // ws clients who are going to login
     logout_queue    chan *WsClient                  // ws clients who are going to logout
     mbus            *MBusNode
+    clientsLock     *sync.RWMutex
 }
 
 func NewWsServer() (server *WsServer, err error) {
@@ -36,7 +38,7 @@ func NewWsServer() (server *WsServer, err error) {
         return
     }
 
-    server = &WsServer { clients, login_queue, logout_queue, mbus }
+    server = &WsServer { clients, login_queue, logout_queue, mbus, new(sync.RWMutex) }
     return
 }
 
@@ -99,14 +101,20 @@ func (server *WsServer) Start(port int) {
         for msg_wrapper := range server.mbus.ReaderChan {
             cid := msg_wrapper.Cid
             username := msg_wrapper.Username
+            send_to := msg_wrapper.SendTo
 
             // check the username and cid for security
-            if user, ok := server.clients[username]; !ok {
+            server.clientsLock.RLock()
+            if user, ok := server.clients[username]; !ok && send_to != Broadcast {
+                server.clientsLock.RUnlock()
                 continue
-            } else if _, ok := user[cid]; !ok {
+            } else if _, ok := user[cid]; !ok && send_to == SendToClient {
+                server.clientsLock.RUnlock()
                 continue
             }
+            server.clientsLock.RUnlock()
 
+            server.clientsLock.RLock()
             switch msg_wrapper.SendTo {
             case SendToClient:
                 if user, ok := server.clients[username]; ok {
@@ -136,6 +144,7 @@ func (server *WsServer) Start(port int) {
                     }
                 }
             }
+            server.clientsLock.RUnlock()
         }
     }()
 
@@ -148,11 +157,13 @@ func (server *WsServer) Start(port int) {
                 cid := client.cid
                 username := client.username
 
+                server.clientsLock.Lock()
                 user, ok := server.clients[username]
                 if !ok {
                     user = make(map[int] *WsClient)
                     server.clients[username] = user
                 }
+                server.clientsLock.Unlock()
 
                 user[cid] = client
                 log.Printf("Ws: New client for user %s connected (cid: %v)", username, cid)
@@ -188,17 +199,22 @@ func (server *WsServer) Start(port int) {
                 cid := client.cid
                 username := client.username
 
-                b, err := json.Marshal( Payload { LogoutRequest, username } )
-                if err != nil {
-                    log.Println(err)
-                    continue
-                }
-
-                server.mbus.Write("game", MessageWrapper { Cid: cid, Username: username, Data: b })
-
+                server.clientsLock.Lock()
                 if user, ok := server.clients[username]; ok {
                     delete(user, cid)
+
+                    if len(user) == 0 {
+                        b, err := json.Marshal( Payload { LogoutRequest, username } )
+                        if err != nil {
+                            server.clientsLock.Unlock()
+                            log.Println(err)
+                            continue
+                        }
+
+                        server.mbus.Write("game", MessageWrapper { Cid: cid, Username: username, Data: b })
+                    }
                 }
+                server.clientsLock.Unlock()
             }
         }
     }()
