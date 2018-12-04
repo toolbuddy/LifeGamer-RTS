@@ -20,24 +20,17 @@ type MessageHandler struct {
 
     onMessage   map[comm.MsgType] OnMessageFunc
     mbus        *comm.MBusNode
-    dChanged    chan<- ClientInfo
-    pLogin      chan<- ClientInfo
-    pLogout     chan<- ClientInfo
 }
 
-func NewMessageHandler(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode, dChanged chan<- ClientInfo, pLogin chan<- ClientInfo, pLogout chan<- ClientInfo) *MessageHandler {
+func NewMessageHandler(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode) *MessageHandler {
     mHandler := &MessageHandler {
         gameDB,
         common_data,
         make(map[comm.MsgType] OnMessageFunc),
         mbus,
-        dChanged,
-        pLogin,
-        pLogout,
     }
 
     mHandler.onMessage[comm.LoginRequest]      = mHandler.onLoginRequest
-    mHandler.onMessage[comm.PlayerDataRequest] = mHandler.onPlayerDataRequest
     mHandler.onMessage[comm.LogoutRequest]     = mHandler.onLogoutRequest
     mHandler.onMessage[comm.HomePointResponse] = mHandler.onHomePointResponse
     mHandler.onMessage[comm.MapDataRequest]    = mHandler.onMapDataRequest
@@ -61,6 +54,20 @@ func (mHandler MessageHandler) start() {
     }()
 }
 
+func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
+    username := client_info.username
+
+    // Add user to online list if user not exist, and start player data updating
+    mHandler.playerLock.Lock()
+    if _, ok := mHandler.online_players[username]; !ok {
+        user_ch := make(chan string, 1)
+        mHandler.online_players[username] = user_ch
+
+        go playerDataUpdate(client_info, user_ch, mHandler.mbus, mHandler.playerDB)
+    }
+    mHandler.playerLock.Unlock()
+}
+
 func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
     username := request.Username
 
@@ -80,37 +87,19 @@ func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
         return
     }
 
-    mHandler.onPlayerDataRequest(request)
-    mHandler.pLogin <- ClientInfo { request.Cid, request.Username }
-}
-
-func (mHandler MessageHandler) onPlayerDataRequest(request comm.MessageWrapper) {
-    username := request.Username
-
-    player_data, err := mHandler.playerDB.Get(username)
-    if err != nil {
-        log.Println(err)
-        return
-    }
-
-    // Send player data to WsServer
-    payload := PlayerDataPayload { comm.Payload { comm.PlayerDataResponse, username }, player_data }
-
-    b, err := json.Marshal(payload)
-    if err != nil {
-        log.Println(err)
-        return
-    }
-
-    msg := request
-    msg.SendTo = comm.SendToClient
-    msg.Data = b
-
-    mHandler.mbus.Write("ws", msg)
+    mHandler.startPlayerDataUpdate(ClientInfo { request.Cid, request.Username })
 }
 
 func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
-    mHandler.pLogout <- ClientInfo { request.Cid, request.Username }
+    username := request.Username
+
+    mHandler.playerLock.Lock()
+    // Delete user if user exist
+    if user_ch, ok := mHandler.online_players[username]; ok {
+        close(user_ch)
+        delete(mHandler.online_players, username)
+    }
+    mHandler.playerLock.Unlock()
 }
 
 func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper) {
@@ -154,18 +143,18 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
 
         // TODO: Set default money! this is for testing
         player_data.Money = 100000
+        player_data.MoneyRate = 100
 
         if err := mHandler.playerDB.Put(username, player_data); err != nil {
             log.Println(err)
             return
         }
 
-        mHandler.onPlayerDataRequest(response)
-        mHandler.pLogin <- ClientInfo { response.Cid, response.Username }
+        mHandler.startPlayerDataUpdate(ClientInfo { response.Cid, response.Username })
     }
 }
 
-func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
+func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
     var payload struct {
         comm.Payload
         ChunkPos []util.Point
@@ -176,7 +165,7 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         return
     }
 
-    var chunks []world.Chunk = []world.Chunk {}
+    chunks := []world.Chunk {}
 
     for _, pos := range payload.ChunkPos {
         chunk, err := mHandler.worldDB.Get(pos.String())
@@ -209,31 +198,39 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         client_info := ClientInfo { request.Cid, request.Username }
 
         // Get chunks where this client was watching
-        // FIXME: Data race here
+        mHandler.clientLock.RLock()
         if poss, ok := mHandler.client2Chunks[client_info]; ok {
             for _, pos := range poss {
                 // Remove client from chunk watching list
+                mHandler.chunkLock.Lock()
                 if infos, ok := mHandler.chunk2Clients[pos]; ok {
                     for i, info := range infos {
                         if info == client_info {
                             mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
+                            break
                         }
                     }
                 }
+                mHandler.chunkLock.Unlock()
             }
         }
+        mHandler.clientLock.RUnlock()
 
         // Update clients who are watching this chunk
         for _, pos := range payload.ChunkPos {
+            mHandler.chunkLock.Lock()
             if infos, ok := mHandler.chunk2Clients[pos]; !ok {
                 mHandler.chunk2Clients[pos] = []ClientInfo { client_info }
             } else {
                 mHandler.chunk2Clients[pos] = append(infos, client_info)
             }
+            mHandler.chunkLock.Unlock()
         }
 
         // Update where the client is watching
+        mHandler.clientLock.Lock()
         mHandler.client2Chunks[client_info] = payload.ChunkPos
+        mHandler.clientLock.Unlock()
 
         // TODO: move this part to mapDataUpdate (minimap update part)
 /*
@@ -261,43 +258,6 @@ func (mHandler *MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         msg.Data = b
         mHandler.mbus.Write("ws", msg)
 */
-    }
-}
-
-func (mHandler MessageHandler) mapDataUpdate(poss []util.Point) {
-    client2chunk := make(map[ClientInfo] []world.Chunk)
-
-    for _, pos := range poss {
-        if infos, ok := mHandler.chunk2Clients[pos]; ok {
-            chunk, err := mHandler.worldDB.Get(pos.String())
-            if err != nil {
-                log.Println(err)
-                continue
-            }
-
-            for _, info := range infos {
-                if chunks, ok := client2chunk[info]; !ok {
-                    client2chunk[info] = []world.Chunk { chunk }
-                } else {
-                    client2chunk[info] = append(chunks, chunk)
-                }
-            }
-        }
-    }
-
-    for info, chunks := range client2chunk {
-        payload := comm.Payload { Msg_type: comm.MapDataResponse, Username: info.username }
-        map_data := MapDataPayload { payload, chunks }
-
-        b, err := json.Marshal(map_data)
-        if err != nil {
-            log.Println(err)
-            continue
-        }
-
-        msg := comm.MessageWrapper { info.cid, info.username, comm.SendToClient, b }
-
-        mHandler.mbus.Write("ws", msg)
     }
 }
 
@@ -381,7 +341,4 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 
     // Write user into database
     mHandler.playerDB.Put(payload.Username, user)
-
-    // TODO: Chech whether this work for all users
-    mHandler.dChanged <- ClientInfo { request.Cid, request.Username }
 }

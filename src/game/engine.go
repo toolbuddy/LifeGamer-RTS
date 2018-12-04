@@ -7,6 +7,8 @@ import (
     "game/world"
     "io/ioutil"
     "encoding/json"
+    "sync"
+    "log"
 )
 
 type ClientInfo struct {
@@ -23,6 +25,10 @@ type CommonData struct {
     online_players  map[string] chan<- string
     chunk2Clients   map[util.Point] []ClientInfo    // store clients who are watching this chunk
     client2Chunks   map[ClientInfo] []util.Point    // store chunks where the client is watching
+
+    playerLock      *sync.RWMutex
+    chunkLock       *sync.RWMutex
+    clientLock      *sync.RWMutex
 }
 
 type GameEngine struct {
@@ -52,27 +58,34 @@ func NewGameEngine() (engine *GameEngine, err error) {
     chunk2Clients  := make(map[util.Point] []ClientInfo)
     client2Chunks  := make(map[ClientInfo] []util.Point)
 
-    common_data := CommonData { online_players, chunk2Clients, client2Chunks }
+    lock0 := new(sync.RWMutex)
+    lock1 := new(sync.RWMutex)
+    lock2 := new(sync.RWMutex)
+
+    common_data := CommonData { online_players, chunk2Clients, client2Chunks, lock0, lock1, lock2 }
 
     mbus, err := comm.NewMBusNode("game")
     if err != nil {
         return
     }
 
-    dChanged := make(chan ClientInfo, 256)
-    pLogin   := make(chan ClientInfo, 256)
-    pLogout  := make(chan ClientInfo, 256)
-
-    handler  := NewMessageHandler(gameDB, common_data, mbus, dChanged, pLogin, pLogout)
-    notifier := NewNotifier(gameDB, common_data, mbus, dChanged, pLogin, pLogout)
+    handler  := NewMessageHandler(gameDB, common_data, mbus)
+    notifier := NewNotifier(gameDB, common_data, mbus)
 
     engine = &GameEngine { gameDB, common_data, handler, notifier, mbus }
     return
 }
 
 func (engine GameEngine) Start() {
+    log.Println("Initializing game engine")
+
+    log.Println("Starting message handler")
     engine.handler.start()
-    engine.notifier.Start()
+
+    log.Println("Starting notifier")
+    engine.notifier.start()
+
+    log.Println("Initializing game engine done")
 }
 
 func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename string) (err error) {
@@ -98,7 +111,7 @@ func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename st
         }
 
         chunk.Update()
-        engine.worldDB.Put(p.String(), chunk)
+        engine.worldDB.Load(p.String(), chunk)
     }
 
     return

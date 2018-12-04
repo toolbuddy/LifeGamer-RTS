@@ -5,7 +5,10 @@ import (
     "time"
     "comm"
     "game/player"
+    "game/world"
     "encoding/json"
+    "util"
+    "fmt"
 )
 
 // This file is used to notify when data updates
@@ -14,71 +17,103 @@ type Notifier struct {
     GameDB
     CommonData
 
-    mbus            *comm.MBusNode
-    dChanged        <-chan ClientInfo
-    pLogin          <-chan ClientInfo
-    pLogout         <-chan ClientInfo           // used to send latest player data to servers
+    mbus        *comm.MBusNode
 }
 
-func NewNotifier(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode, dChanged <-chan ClientInfo, pLogin <-chan ClientInfo, pLogout <-chan ClientInfo) (notifier *Notifier) {
+func NewNotifier(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode) (notifier *Notifier) {
     notifier = &Notifier {
         gameDB,
         common_data,
         mbus,
-        dChanged,
-        pLogin,
-        pLogout,
     }
 
     return
 }
 
-func (notifier Notifier) Start() {
-    // Handles user login and logout
-    go func() {
-        for {
-            select {
-            case client_info := <-notifier.pLogout:
-                username := client_info.username
-
-                // Delete if user exist
-                if user_ch, ok := notifier.online_players[username]; ok {
-                    close(user_ch)
-                    delete(notifier.online_players, username)
-                }
-            case client_info := <-notifier.pLogin:
-                username := client_info.username
-
-                // Add if user not exist
-                if _, ok := notifier.online_players[username]; !ok {
-                    user_ch := make(chan string, 1)
-                    notifier.online_players[username] = user_ch
-
-                    go notify_loop(client_info, user_ch, notifier.mbus, notifier.playerDB)
-                }
-            case client_info := <-notifier.dChanged:
-                username := client_info.username
-
-                // Update user status if user still online
-                if user_ch, ok := notifier.online_players[username]; ok {
-                    user_ch <- "update"
-                }
-            }
-        }
-    }()
-
+func (notifier Notifier) start() {
     // start ticker
     //TODO: Check if here have race condition
     go func() {
         for range time.NewTicker(time.Second).C {
+            notifier.playerLock.RLock()
             for _, user_ch := range notifier.online_players {
-                user_ch <- "tick"
+                user_ch <- ""
             }
+            notifier.playerLock.RUnlock()
+        }
+    }()
+
+    // player DB update checking
+    go func() {
+        for username := range notifier.playerDB.Updated {
+            notifier.playerLock.RLock()
+            if user_ch, ok := notifier.online_players[username]; ok {
+                user_ch <- "update"
+            }
+            notifier.playerLock.RUnlock()
+        }
+    }()
+
+    // world DB update checking
+    go func() {
+        for spos := range notifier.worldDB.Updated {
+            pos := util.Point {}
+            fmt.Sscanf(spos, "%d,%d", &pos.X, &pos.Y)
+            notifier.mapDataUpdate(pos)
         }
     }()
 }
 
-func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusNode, db *player.PlayerDB) {
+func (notifier Notifier) mapDataUpdate(pos util.Point) {
+    // read which clients are watching this chunk
+    notifier.chunkLock.RLock()
+    infos, ok := notifier.chunk2Clients[pos]
+    if !ok {
+        notifier.chunkLock.RUnlock()
+        return
+    }
+    notifier.chunkLock.RUnlock()
+
+    // update the map of these clients
+    for _, info := range infos {
+        chunks := []world.Chunk {}
+
+        // read chunks that the client is watching
+        notifier.clientLock.RLock()
+        poss, ok := notifier.client2Chunks[info]
+        if !ok {
+            notifier.clientLock.RUnlock()
+            continue
+        }
+        notifier.clientLock.RUnlock()
+
+        // load chunks data from DB
+        for _, pos := range poss {
+            chunk, err := notifier.worldDB.Get(pos.String())
+            if err != nil {
+                log.Println(err)
+            }
+
+            chunks = append(chunks, chunk)
+        }
+
+        // send data to client
+        payload := comm.Payload { Msg_type: comm.MapDataResponse, Username: info.username }
+        map_data := MapDataPayload { payload, chunks }
+
+        b, err := json.Marshal(map_data)
+        if err != nil {
+            log.Println(err)
+            continue
+        }
+
+        msg := comm.MessageWrapper { info.cid, info.username, comm.SendToClient, b }
+
+        notifier.mbus.Write("ws", msg)
+    }
+}
+
+func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusNode, db *player.PlayerDB) {
     username := client_info.username
 
     player_data, err := db.Get(username)
@@ -91,15 +126,12 @@ func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusN
     player_data.Update()
 
     for m := range user_ch {
-        switch m {
-        case "tick":
-            player_data.Update()
-        case "update":
+        if m == "update" {
             player_data, err = db.Get(username)
-            player_data.Update()
         }
 
-        // TODO: use real communication format
+        player_data.Update()
+
         b, err := json.Marshal(PlayerDataPayload { comm.Payload { comm.PlayerDataResponse, username }, player_data })
         if err != nil {
             log.Println(err)
@@ -111,5 +143,5 @@ func notify_loop(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusN
         mbus.Write("ws", msg)
     }
 
-    log.Printf("Notifier: Notify loop for %v stopped", username)
+    log.Printf("Notifier: the data update of player \"%s\" has stopped", username)
 }
