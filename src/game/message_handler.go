@@ -315,9 +315,31 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
     switch payload.Action {
     case Build:
         err = world.BuildStructure(mHandler.worldDB, payload.Structure)
+
+        // TODO: only power and money part finished
+        if payload.Structure.Power > 0 {
+            user.PowerMax += int64(payload.Structure.Power)
+        } else {
+            user.Power += int64(-(payload.Structure.Power))
+        }
+
+        user.Money -= int64(payload.Structure.Cost)
+        // TODO: Wait build finished
+        user.MoneyRate += int64(payload.Structure.Money)
     //case Upgrade:
     case Destruct:
         err = world.DestuctStructure(mHandler.worldDB, payload.Structure)
+
+        if payload.Structure.Power > 0 {
+            user.PowerMax -= int64(payload.Structure.Power)
+        } else {
+            user.Power -= int64(-(payload.Structure.Power))
+        }
+
+        // Money back when destruct
+        // TODO: calculate upgrade money
+        user.Money += int64(payload.Structure.Cost) / 2
+        user.MoneyRate -= int64(payload.Structure.Money)
     //case Repair:
     //case Restart:
     }
@@ -328,17 +350,6 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
         return
     }
 
-    // TODO: only power and money part finished
-    if payload.Structure.Power > 0 {
-        user.PowerMax += int64(payload.Structure.Power)
-    } else {
-        user.Power += int64(-(payload.Structure.Power))
-    }
-
-    // TODO: Dealing with upgrade cost
-    user.Money -= int64(payload.Structure.Cost)
-    user.MoneyRate += int64(payload.Structure.Money)
-
-    // Write user into database
+    // Write user into database if no world error happened
     mHandler.playerDB.Put(payload.Username, user)
 }
