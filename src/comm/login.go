@@ -5,6 +5,8 @@ import (
     "net/http"
     "io/ioutil"
     "encoding/json"
+
+    "config"
 )
 
 type gitlab_user struct {
@@ -19,7 +21,7 @@ func Login(token string) (string, error) {
     client := &http.Client{}
 
     //TODO: use config file for hostname
-    req, err := http.NewRequest("GET", "https://pd2a.imslab.org/gitlab/api/v4/user", nil)
+    req, err := http.NewRequest("GET", config.Hostname, nil)
     if err != nil {
         return "", err
     }

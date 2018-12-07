@@ -9,6 +9,7 @@ import (
     "encoding/json"
     "sync"
     "log"
+    "config"
 )
 
 type ClientInfo struct {
@@ -42,12 +43,12 @@ type GameEngine struct {
 
 func NewGameEngine() (engine *GameEngine, err error) {
     // TODO: use config to determine DB location
-    playerDB, err := player.NewPlayerDB("/tmp/gdb/pdb")
+    playerDB, err := player.NewPlayerDB(config.PdbPath)
     if err != nil {
         return
     }
 
-    worldDB, err := world.NewWorldDB("/tmp/gdb/wdb")
+    worldDB, err := world.NewWorldDB(config.WdbPath)
     if err != nil {
         return
     }
