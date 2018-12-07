@@ -12,7 +12,7 @@ import (
 func main() {
 
 	genJson := flag.Bool("genjson", false, "Generate protocal json")
-	configPath := flag.String("config", "config.development.json", "Path to configuration file")
+	configPath := flag.String("config", "src/config/default.json", "Path to configuration file")
 	wdbPath := flag.String("wdb", "", "Path to world database")
 	pdbPath := flag.String("pdb", "", "Path to player database")
 	hostname := flag.String("host", "", "Name of login host")
