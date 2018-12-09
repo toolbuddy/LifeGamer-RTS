@@ -1,5 +1,5 @@
 {
     "pdb_path": "/tmp/gdb/pdb",
     "wdb_path": "/tmp/gdb/wdb",
-    "hostname": "https://pd2a.imslab.org/gitlab/api/v4/user"
+    "hostname": "https://pd2a.imslab.org"
 }

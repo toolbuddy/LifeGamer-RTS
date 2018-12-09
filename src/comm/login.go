@@ -16,12 +16,10 @@ type gitlab_user struct {
 }
 
 // Login with GitLab token
-// TODO: Support Private token and Access token
 func Login(token string) (string, error) {
     client := &http.Client{}
 
-    //TODO: use config file for hostname
-    req, err := http.NewRequest("GET", config.Hostname, nil)
+    req, err := http.NewRequest("GET", config.Hostname + "/gitlab/api/v4/user", nil)
     if err != nil {
         return "", err
     }
