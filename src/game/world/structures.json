@@ -8,6 +8,7 @@
             "Power" : 1000,
             "Human" : -10,
             "Money" : -1500,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -19,6 +20,7 @@
             "Power" : 750,
             "Human" : -5,
             "Money" : -500,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -30,6 +32,7 @@
             "Power" : 250,
             "Human" : -1,
             "Money" : -300,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -41,6 +44,7 @@
             "Power" : 500,
             "Human" : -2,
             "Money" : -500,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -52,6 +56,7 @@
             "Power" : 500,
             "Human" : -1,
             "Money" : -200,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -63,6 +68,7 @@
             "Power" : 500,
             "Human" : -1,
             "Money" : -300,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -74,6 +80,7 @@
             "Power" : 3000,
             "Human" : -20,
             "Money" : -6000,
+            "Population": 0,
             "Size" : 8,
             "MaxLevel": 5
         },
@@ -85,6 +92,7 @@
             "Power" : -2000,
             "Human" : -1,
             "Money" : 5000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -96,6 +104,7 @@
             "Power" : -500,
             "Human" : -10,
             "Money" : 2000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -107,6 +116,7 @@
             "Power" : -200,
             "Human" : -5,
             "Money" : 2000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -118,6 +128,7 @@
             "Power" : -2500,
             "Human" : -20,
             "Money" : 7000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -129,6 +140,7 @@
             "Power" : -100,
             "Human" : -30,
             "Money" : 2000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -140,6 +152,7 @@
             "Power" : 0,
             "Human" : -2,
             "Money" : 1000,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 5
         },
@@ -151,6 +164,7 @@
             "Power" : -200,
             "Human" : 0,
             "Money" : 0,
+            "Population": 0,
             "Size" : 2,
             "MaxLevel": 1
         },
@@ -162,6 +176,7 @@
             "Power" : -400,
             "Human" : 0,
             "Money" : 0,
+            "Population": 0,
             "Size" : 4,
             "MaxLevel": 1
         },
@@ -173,6 +188,7 @@
             "Power" : -500,
             "Human" : 0,
             "Money" : 0,
+            "Population": 0,
             "Size" : 8,
             "MaxLevel": 1
         },
@@ -184,6 +200,7 @@
             "Power" : -100,
             "Human" : -2,
             "Money" : -500,
+            "Population": 0,
             "Size" : 2,
             "MaxLevel": 5
         }

@@ -57,6 +57,20 @@ func (mHandler MessageHandler) start() {
 func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
     username := client_info.username
 
+    // Send minimap data to user
+    mHandler.CommonData.minimapLock.RLock()
+    payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *mHandler.CommonData.minimap }
+    mHandler.CommonData.minimapLock.RUnlock()
+
+    b, err := json.Marshal(payload)
+    if err != nil {
+        log.Println(err)
+        return
+    }
+
+    msg := comm.MessageWrapper { Cid: client_info.cid, Username: username, SendTo: comm.SendToClient, Data: b }
+    mHandler.mbus.Write("ws", msg)
+
     // Add user to online list if user not exist, and start player data updating
     mHandler.playerLock.Lock()
     if _, ok := mHandler.online_players[username]; !ok {
@@ -137,6 +151,9 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
             return
         }
 
+        // Send minimap data
+        mHandler.owner_changed <- chunk.Key()
+
         // Username not found! Create new player in PlayerDB
         player_data.Home = payload.Home
         player_data.UpdateTime = time.Now().Unix()
@@ -144,6 +161,9 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
         // TODO: Set default money! this is for testing
         player_data.Money = 100000
         player_data.MoneyRate = 100
+
+        // Set population provided by home chunk
+        player_data.HumanMax = 100
 
         if err := mHandler.playerDB.Put(username, player_data); err != nil {
             log.Println(err)
@@ -231,33 +251,6 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
         mHandler.clientLock.Lock()
         mHandler.client2Chunks[client_info] = payload.ChunkPos
         mHandler.clientLock.Unlock()
-
-        // TODO: move this part to mapDataUpdate (minimap update part)
-/*
-        msg = request
-        msg.SendTo = comm.SendToUser
-        var mmap_data MinimapDataPayload
-        mmap_data.Msg_type = comm.MinimapDataResponse
-        mmap_data.Size = util.Size{50, 50}
-        mmap_data.Terrain = make([][]world.TerrainType, 50)
-        mmap_data.Owner = make([][]string, 50)
-        for i := 0;i < 50;i++ {
-            mmap_data.Terrain[i] = make([]world.TerrainType, 50)
-            mmap_data.Owner[i] = make([]string, 50)
-            for j := 0;j < 50;j++ {
-                mmap_data.Terrain[i][j] = world.Grass
-                mmap_data.Owner[i][j] = "korea"
-            }
-        }
-        b, err = json.Marshal(mmap_data)
-        if err != nil {
-            log.Println(err)
-            return
-        }
-
-        msg.Data = b
-        mHandler.mbus.Write("ws", msg)
-*/
     }
 }
 
@@ -272,7 +265,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 
     log.Printf("world: %s request %s at chunk (%s), pos (%s)", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
 
-    // Retrieve info
+    // Retrieve info from struct definition
     world.CompleteStructure(&payload.Structure)
 
     user, err := mHandler.playerDB.Get(payload.Username)
@@ -294,6 +287,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
         return
     }
 
+    // Check user's money
     switch payload.Action {
     case Build:
         if user.Money < int64(payload.Structure.Cost) {
@@ -314,7 +308,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
     // Check world status & perform action
     switch payload.Action {
     case Build:
-        err = world.BuildStructure(mHandler.worldDB, payload.Structure)
+        chunk, err = world.BuildStructure(mHandler.worldDB, payload.Structure)
 
         // TODO: only power and money part finished
         if payload.Structure.Power > 0 {
@@ -323,18 +317,33 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
             user.Power += int64(-(payload.Structure.Power))
         }
 
+        // Change player's human rate, human occupy is not needed (calculate by chunk)
+        if payload.Structure.Human > 0 {
+            user.HumanRate += int64(payload.Structure.Human)
+        }
+
+        // Change max population
+        user.HumanMax += int64(payload.Structure.Population)
+
         user.Money -= int64(payload.Structure.Cost)
         // TODO: Wait build finished
         user.MoneyRate += int64(payload.Structure.Money)
     //case Upgrade:
     case Destruct:
-        err = world.DestuctStructure(mHandler.worldDB, payload.Structure)
+        chunk, err = world.DestuctStructure(mHandler.worldDB, payload.Structure)
 
         if payload.Structure.Power > 0 {
             user.PowerMax -= int64(payload.Structure.Power)
         } else {
             user.Power -= int64(-(payload.Structure.Power))
         }
+
+        if payload.Structure.Human > 0 {
+            user.HumanRate -= int64(payload.Structure.Human)
+        }
+
+        // Change max population
+        user.HumanMax -= int64(payload.Structure.Population)
 
         // Money back when destruct
         // TODO: calculate upgrade money
@@ -350,6 +359,16 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
         return
     }
 
-    // Write user into database if no world error happened
+    // Check chunk resource status(such as human not enough)
+    human_needed := 0
+    for _, b := range chunk.Structures {
+        human_needed += -b.Human
+    }
+
+    // TODO: Change building status when human not enough
+    log.Println(human_needed, chunk.Human)
+
+    // Write data into database if no world error happened
     mHandler.playerDB.Put(payload.Username, user)
+    mHandler.worldDB.Put(chunk.Key(), chunk)
 }

@@ -28,11 +28,15 @@ type MapDataPayload struct {
     Chunks []world.Chunk
 }
 
-type MinimapDataPayload struct {
-    comm.Payload
+type MinimapData struct {
     Size util.Size
     Terrain [][]world.TerrainType
     Owner   [][]string
+}
+
+type MinimapDataPayload struct {
+    comm.Payload
+    MinimapData
 }
 
 type BuildingPayload struct {

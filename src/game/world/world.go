@@ -29,6 +29,7 @@ type Chunk struct {
     Size        util.Size
     Blocks      [][]Block
     Structures  []Structure
+    Human       int64       // Human on this chunk
     UpdateTime  int64       // Unix time
 }
 
@@ -36,7 +37,6 @@ type Chunk struct {
 func (chunk Chunk) Key() string {
     return chunk.Pos.String()
 }
-
 
 func init() {
     StructMap = make(map[int]Structure)
@@ -57,7 +57,7 @@ func NewChunk(pos util.Point) *Chunk {
         }
     }
 
-    return &Chunk { "", pos, ChunkSize, blocks, []Structure {}, time.Now().Unix() }
+    return &Chunk { "", pos, ChunkSize, blocks, []Structure {}, 0, time.Now().Unix() }
 }
 
 func loadStructures(filename string) (err error) {
@@ -156,24 +156,17 @@ func CompleteStructure(str *Structure) {
     str.Pos = pos
 }
 
-func BuildStructure(wdb *WorldDB, str Structure) (err error) {
-    target_chunk, err := wdb.Get(str.Chunk.String())
+func BuildStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err error) {
+    target_chunk, err = wdb.Get(str.Chunk.String())
 
     // WorldDB get error
     if err != nil {
         return
     }
 
-    // Permission denied
-    // TODO: Move user check part to game engine
-    //if target_chunk.Owner != owner {
-    //err = errors.New("User do not own the chunk")
-    //return
-    //}
-
     // Check available space & terrain
     if ok, err := target_chunk.Accepts(str); !ok {
-        return err
+        return target_chunk, err
     }
 
     // Check finished, build the structure
@@ -188,14 +181,11 @@ func BuildStructure(wdb *WorldDB, str Structure) (err error) {
     // Add structure
     target_chunk.Structures = append(target_chunk.Structures, str)
 
-    // Save to database
-    wdb.Put(target_chunk.Key(), target_chunk)
-
     return
 }
 
-func DestuctStructure(wdb *WorldDB, str Structure) (err error) {
-    target_chunk, err := wdb.Get(str.Chunk.String())
+func DestuctStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err error) {
+    target_chunk, err = wdb.Get(str.Chunk.String())
 
     // WorldDB get error
     if err != nil {
@@ -226,9 +216,6 @@ func DestuctStructure(wdb *WorldDB, str Structure) (err error) {
 
     // delete structure
     target_chunk.Structures = append(target_chunk.Structures[:index], target_chunk.Structures[index+1:]...)
-
-    // Save to database
-    wdb.Put(target_chunk.Key(), target_chunk)
 
     return
 }

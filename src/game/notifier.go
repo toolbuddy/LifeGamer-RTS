@@ -32,7 +32,6 @@ func NewNotifier(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode) (no
 
 func (notifier Notifier) start() {
     // start ticker
-    //TODO: Check if here have race condition
     go func() {
         for range time.NewTicker(time.Second).C {
             notifier.playerLock.RLock()
@@ -60,6 +59,33 @@ func (notifier Notifier) start() {
             pos := util.Point {}
             fmt.Sscanf(spos, "%d,%d", &pos.X, &pos.Y)
             notifier.mapDataUpdate(pos)
+        }
+    }()
+
+    // chunk owner change checking
+    go func() {
+        for key := range notifier.CommonData.owner_changed {
+            chk, err := notifier.worldDB.Get(key)
+            if err != nil {
+                log.Println(err)
+            }
+
+            var x, y int
+            fmt.Sscanf(key, "%d,%d", &x, &y)
+
+            notifier.CommonData.minimapLock.Lock()
+            notifier.CommonData.minimap.Owner[x + 25][y + 25] = chk.Owner
+            payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *notifier.CommonData.minimap }
+            notifier.CommonData.minimapLock.Unlock()
+
+            b, err := json.Marshal(payload)
+            if err != nil {
+                log.Println(err)
+                return
+            }
+
+            msg := comm.MessageWrapper { SendTo: comm.Broadcast, Data: b }
+            notifier.mbus.Write("ws", msg)
         }
     }()
 }

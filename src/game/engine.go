@@ -20,16 +20,20 @@ type ClientInfo struct {
 type GameDB struct {
     playerDB    *player.PlayerDB
     worldDB     *world.WorldDB
- }
+}
 
+// Must use refrence type
 type CommonData struct {
     online_players  map[string] chan<- string
     chunk2Clients   map[util.Point] []ClientInfo    // store clients who are watching this chunk
     client2Chunks   map[ClientInfo] []util.Point    // store chunks where the client is watching
+    owner_changed   chan string
+    minimap         *MinimapData
 
     playerLock      *sync.RWMutex
     chunkLock       *sync.RWMutex
     clientLock      *sync.RWMutex
+    minimapLock     *sync.RWMutex
 }
 
 type GameEngine struct {
@@ -58,12 +62,21 @@ func NewGameEngine() (engine *GameEngine, err error) {
     online_players := make(map[string] chan<- string)
     chunk2Clients  := make(map[util.Point] []ClientInfo)
     client2Chunks  := make(map[ClientInfo] []util.Point)
+    owner_changed  := make(chan string, 256)
 
-    lock0 := new(sync.RWMutex)
-    lock1 := new(sync.RWMutex)
-    lock2 := new(sync.RWMutex)
+    var mmap_data MinimapData
 
-    common_data := CommonData { online_players, chunk2Clients, client2Chunks, lock0, lock1, lock2 }
+    common_data := CommonData {
+        online_players,
+        chunk2Clients,
+        client2Chunks,
+        owner_changed,
+        &mmap_data,
+        new(sync.RWMutex),
+        new(sync.RWMutex),
+        new(sync.RWMutex),
+        new(sync.RWMutex),
+    }
 
     mbus, err := comm.NewMBusNode("game")
     if err != nil {
@@ -79,6 +92,21 @@ func NewGameEngine() (engine *GameEngine, err error) {
 
 func (engine GameEngine) Start() {
     log.Println("Initializing game engine")
+
+    // initialize minimap data
+    engine.CommonData.minimap.Size = util.Size { 50, 50 }
+    engine.CommonData.minimap.Owner = make([][]string, 50)
+    for i := 0;i < 50;i++ {
+        engine.CommonData.minimap.Owner[i] = make([]string, 50)
+        for j := 0;j < 50;j++ {
+            chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
+            if err != nil {
+                log.Fatalln(err)
+            }
+
+            engine.CommonData.minimap.Owner[i][j] = chk.Owner
+        }
+    }
 
     log.Println("Starting message handler")
     engine.handler.start()

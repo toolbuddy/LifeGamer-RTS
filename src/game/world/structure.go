@@ -23,6 +23,7 @@ type Structure struct {
     Human       int             // + for provide, - for occupy
     Money       int             // + for produce, - for consume
     Power       int             // + for generate, - for consume
+    Population  int             // How many population can increase for player
 
     Cost        int             // Money required for build
     // Upgrade cost: 1->2 = 1 * Cost
