@@ -38,5 +38,6 @@ type Structure struct {
     Pos         util.Point
     Size        util.Size
 
-    Terrain     int            // vaild construct terrain
+    Terrain     int             // vaild construct terrain
+    UpdateTime  int64           // Unix time
 }

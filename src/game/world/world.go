@@ -177,6 +177,7 @@ func BuildStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err error)
     }
 
     str.Status = Building
+    str.UpdateTime = time.Now().Unix()
 
     // Add structure
     target_chunk.Structures = append(target_chunk.Structures, str)

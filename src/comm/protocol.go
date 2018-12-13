@@ -109,3 +109,9 @@ type Payload struct {
     Msg_type MsgType
     Username string
 }
+
+type MessagePayload struct {
+    Payload
+    Avatar  string
+    Message string
+}
