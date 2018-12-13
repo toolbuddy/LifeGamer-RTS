@@ -94,17 +94,19 @@ func (engine GameEngine) Start() {
     log.Println("Initializing game engine")
 
     // initialize minimap data
-    engine.CommonData.minimap.Size = util.Size { 50, 50 }
-    engine.CommonData.minimap.Owner = make([][]string, 50)
+    engine.minimap.Size = util.Size { 50, 50 }
+    engine.minimap.Owner = make([][]string, 50)
+
     for i := 0;i < 50;i++ {
-        engine.CommonData.minimap.Owner[i] = make([]string, 50)
+        engine.minimap.Owner[i] = make([]string, 50)
+
         for j := 0;j < 50;j++ {
             chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
             if err != nil {
                 log.Fatalln(err)
             }
 
-            engine.CommonData.minimap.Owner[i][j] = chk.Owner
+            engine.minimap.Owner[i][j] = chk.Owner
         }
     }
 

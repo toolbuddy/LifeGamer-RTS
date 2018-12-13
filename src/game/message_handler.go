@@ -58,9 +58,9 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
     username := client_info.username
 
     // Send minimap data to user
-    mHandler.CommonData.minimapLock.RLock()
-    payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *mHandler.CommonData.minimap }
-    mHandler.CommonData.minimapLock.RUnlock()
+    mHandler.minimapLock.RLock()
+    payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *mHandler.minimap }
+    mHandler.minimapLock.RUnlock()
 
     b, err := json.Marshal(payload)
     if err != nil {

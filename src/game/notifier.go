@@ -64,7 +64,7 @@ func (notifier Notifier) start() {
 
     // chunk owner change checking
     go func() {
-        for key := range notifier.CommonData.owner_changed {
+        for key := range notifier.owner_changed {
             chk, err := notifier.worldDB.Get(key)
             if err != nil {
                 log.Println(err)
@@ -73,10 +73,10 @@ func (notifier Notifier) start() {
             var x, y int
             fmt.Sscanf(key, "%d,%d", &x, &y)
 
-            notifier.CommonData.minimapLock.Lock()
-            notifier.CommonData.minimap.Owner[x + 25][y + 25] = chk.Owner
-            payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *notifier.CommonData.minimap }
-            notifier.CommonData.minimapLock.Unlock()
+            notifier.minimapLock.Lock()
+            notifier.minimap.Owner[x + 25][y + 25] = chk.Owner
+            payload := MinimapDataPayload { comm.Payload { Msg_type: comm.MinimapDataResponse }, *notifier.minimap }
+            notifier.minimapLock.Unlock()
 
             b, err := json.Marshal(payload)
             if err != nil {
