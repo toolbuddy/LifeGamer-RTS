@@ -1,1 +1,0 @@
-- Money not reset when destroy
