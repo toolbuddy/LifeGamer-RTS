@@ -32,9 +32,10 @@ func NewMessageHandler(gameDB GameDB, common_data CommonData, mbus *comm.MBusNod
 
 	mHandler.onMessage[comm.LoginRequest] = mHandler.onLoginRequest
 	mHandler.onMessage[comm.LogoutRequest] = mHandler.onLogoutRequest
-	mHandler.onMessage[comm.HomePointResponse] = mHandler.onHomePointResponse
+	mHandler.onMessage[comm.HomePointResponse] = mHandler.onOccupyRequest
 	mHandler.onMessage[comm.MapDataRequest] = mHandler.onMapDataRequest
 	mHandler.onMessage[comm.BuildRequest] = mHandler.onBuildRequest
+	mHandler.onMessage[comm.OccupyRequest] = mHandler.onOccupyRequest
 
 	return mHandler
 }
@@ -114,64 +115,6 @@ func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 		delete(mHandler.online_players, username)
 	}
 	mHandler.playerLock.Unlock()
-}
-
-func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper) {
-	var payload struct {
-		comm.Payload
-		Home util.Point
-	}
-
-	if err := json.Unmarshal(response.Data, &payload); err != nil {
-		log.Println(err)
-		return
-	}
-
-	username := response.Username
-	log.Printf("User %s select (%v) as homepoint", username, payload.Home)
-
-	player_data, err := mHandler.playerDB.Get(username)
-	if err != nil {
-		// Check chunk is available
-		chunk, err := mHandler.worldDB.Get(payload.Home.String())
-		if err != nil {
-			log.Println(err)
-			return
-		}
-
-		if chunk.Owner != "" {
-			log.Println("Chunk occupied, cannot use here as new home.")
-			return
-		}
-
-		// Write chunk change into DB
-		chunk.Owner = username
-		if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
-			log.Println(err)
-			return
-		}
-
-		// Send minimap data
-		mHandler.owner_changed <- chunk.Key()
-
-		// Username not found! Create new player in PlayerDB
-		player_data.Home = payload.Home
-		player_data.UpdateTime = time.Now().Unix()
-
-		// TODO: Set default money! this is for testing
-		player_data.Money = 100000
-		player_data.MoneyRate = 100
-
-		// Set population provided by home chunk
-		player_data.PopulationCap = 100
-
-		if err := mHandler.playerDB.Put(username, player_data); err != nil {
-			log.Println(err)
-			return
-		}
-
-		mHandler.startPlayerDataUpdate(ClientInfo{response.Cid, response.Username})
-	}
 }
 
 func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
@@ -371,4 +314,66 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	// Write data into database if no world error happened
 	mHandler.playerDB.Put(payload.Username, user)
 	mHandler.worldDB.Put(chunk.Key(), chunk)
+}
+
+func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
+	var payload struct {
+		comm.Payload
+		Pos util.Point
+	}
+
+	if err := json.Unmarshal(request.Data, &payload); err != nil {
+		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Payload unmarshal failed.")
+		return
+	}
+
+	username := request.Username
+	log.Println(payload)
+
+	// chunk operation
+	chunk, err := mHandler.worldDB.Get(payload.Pos.String())
+	if err != nil {
+		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to get chunk ID "+payload.Pos.String()+".")
+		return
+	}
+
+	if chunk.Owner != "" {
+		// Chunk is occupied
+		return
+	} else {
+		chunk.Owner = username
+	}
+
+	if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
+		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to put chunk ID "+payload.Pos.String()+".")
+		return
+	}
+
+	// player operation
+	player_data, err := mHandler.playerDB.Get(username)
+	if err != nil {
+		// Username not found! Create new player in PlayerDB
+		// Set population provided by home chunk
+		player_data.PopulationCap = 100
+
+		// TODO: Set default money! this is for testing
+		player_data.Money = 100000
+		player_data.MoneyRate = 100
+
+		player_data.Home = payload.Pos
+
+		player_data.Initialized = true
+
+		defer mHandler.startPlayerDataUpdate(ClientInfo{request.Cid, username})
+	}
+
+	player_data.Territory = append(player_data.Territory, payload.Pos)
+	player_data.UpdateTime = time.Now().Unix()
+
+	if err := mHandler.playerDB.Put(username, player_data); err != nil {
+		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to put player ID "+username+".")
+		return
+	}
+
+	log.Println(player_data.Territory)
 }

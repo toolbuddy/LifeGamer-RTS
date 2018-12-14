@@ -16,9 +16,15 @@ type Player struct {
 	Power    int64
 	PowerMax int64
 
-	Home        util.Point // spawn point
+	Home      util.Point // spawn point
+	Territory []util.Point
+
 	Initialized bool
 	UpdateTime  int64 // Unix time
+}
+
+func NewPlayer() *Player {
+	return &Player{Territory: []util.Point{}}
 }
 
 // Update player's current data based on current time & previous update time

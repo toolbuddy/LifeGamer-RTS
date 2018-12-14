@@ -15,45 +15,33 @@ import (
 type MsgType uint
 
 const (
-	// Request from client
 	LoginRequest MsgType = iota
 	PlayerDataRequest
 	MapDataRequest
 	LogoutRequest
 	BuildRequest
-
-	// Request from server
 	HomePointRequest
-
-	// Response from server
 	LoginResponse
 	PlayerDataResponse
 	MapDataResponse
 	MinimapDataResponse
-
-	// Response from client
 	HomePointResponse
+	OccupyRequest
 )
 
 var msg_type = []string{
-	// Request from client
 	"LoginRequest",
 	"PlayerDataRequest",
 	"MapDataRequest",
 	"LogoutRequest",
 	"BuildRequest",
-
-	// Request from server
 	"HomePointRequest",
-
-	// Response from server
 	"LoginResponse",
 	"PlayerDataResponse",
 	"MapDataResponse",
 	"MinimapDataResponse",
-
-	// Response from client
 	"HomePointResponse",
+	"OccupyRequest",
 }
 
 func (mtype MsgType) String() string {

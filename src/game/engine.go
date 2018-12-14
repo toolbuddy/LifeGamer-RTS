@@ -91,8 +91,6 @@ func NewGameEngine() (engine *GameEngine, err error) {
 }
 
 func (engine GameEngine) Start() {
-	log.Println("Initializing game engine")
-
 	// initialize minimap data
 	engine.minimap.Size = util.Size{50, 50}
 	engine.minimap.Owner = make([][]string, 50)
@@ -114,7 +112,7 @@ func (engine GameEngine) Start() {
 	log.Println("Starting notifier")
 	engine.notifier.start()
 
-	log.Println("Initializing game engine done")
+	log.Println("Game engine service available")
 }
 
 func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename string) (err error) {

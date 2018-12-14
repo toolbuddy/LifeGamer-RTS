@@ -1,8 +1,7 @@
-.*.swp
 pkg/
+bin/
 src/github.com/
 src/golang.org/
 src/honnef.co/
+.*.swp
 *.json
-test.go
-bin
