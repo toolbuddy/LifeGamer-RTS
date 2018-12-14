@@ -94,17 +94,17 @@ func (engine GameEngine) Start() {
 	log.Println("Initializing game engine")
 
 	// initialize minimap data
-	engine.CommonData.minimap.Size = util.Size{50, 50}
-	engine.CommonData.minimap.Owner = make([][]string, 50)
+	engine.minimap.Size = util.Size{50, 50}
+	engine.minimap.Owner = make([][]string, 50)
 	for i := 0; i < 50; i++ {
-		engine.CommonData.minimap.Owner[i] = make([]string, 50)
+		engine.minimap.Owner[i] = make([]string, 50)
 		for j := 0; j < 50; j++ {
 			chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
 			if err != nil {
 				log.Fatalln(err)
 			}
 
-			engine.CommonData.minimap.Owner[i][j] = chk.Owner
+			engine.minimap.Owner[i][j] = chk.Owner
 		}
 	}
 
@@ -146,19 +146,27 @@ func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename st
 	return
 }
 
-func (engine GameEngine) UpdateChunk(key string) error {
+// TODO: Maybe world lock & user lock needed to prevent something modify DB during this
+func (engine GameEngine) UpdateChunk(key string) (err error) {
 	chunk, err := engine.worldDB.Get(key)
 	if err != nil {
-		log.Println(err)
+		return
 	}
 
-	need_update := func() bool {
-		for _, s := range chunk.Structures {
+	need_update := func() []int {
+		var res []int
+		for index, s := range chunk.Structures {
 			if s.UpdateTime < chunk.UpdateTime {
-				return true
+				res = append(res, index)
 			}
 		}
 
-		return false
+		return res
 	}()
+
+	if len(need_update) > 0 {
+		// Retrieve user data
+	}
+
+	return nil
 }

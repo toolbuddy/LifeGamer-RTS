@@ -58,9 +58,9 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
 	username := client_info.username
 
 	// Send minimap data to user
-	mHandler.CommonData.minimapLock.RLock()
-	payload := MinimapDataPayload{comm.Payload{Msg_type: comm.MinimapDataResponse}, *mHandler.CommonData.minimap}
-	mHandler.CommonData.minimapLock.RUnlock()
+	mHandler.minimapLock.RLock()
+	payload := MinimapDataPayload{comm.Payload{Msg_type: comm.MinimapDataResponse}, *mHandler.minimap}
+	mHandler.minimapLock.RUnlock()
 
 	b, err := json.Marshal(payload)
 	if err != nil {
@@ -163,7 +163,7 @@ func (mHandler MessageHandler) onHomePointResponse(response comm.MessageWrapper)
 		player_data.MoneyRate = 100
 
 		// Set population provided by home chunk
-		player_data.HumanMax = 100
+		player_data.PopulationCap = 100
 
 		if err := mHandler.playerDB.Put(username, player_data); err != nil {
 			log.Println(err)
@@ -318,12 +318,12 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 		}
 
 		// Change player's human rate, human occupy is not needed (calculate by chunk)
-		if payload.Structure.Human > 0 {
-			user.HumanRate += int64(payload.Structure.Human)
+		if payload.Structure.Population > 0 {
+			user.PopulationRate += int64(payload.Structure.Population)
 		}
 
 		// Change max population
-		user.HumanMax += int64(payload.Structure.Population)
+		user.PopulationCap += int64(payload.Structure.PopulationCap)
 
 		user.Money -= int64(payload.Structure.Cost)
 		// TODO: Wait build finished
@@ -338,12 +338,12 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 			user.Power -= int64(-(payload.Structure.Power))
 		}
 
-		if payload.Structure.Human > 0 {
-			user.HumanRate -= int64(payload.Structure.Human)
+		if payload.Structure.Population > 0 {
+			user.PopulationRate -= int64(payload.Structure.Population)
 		}
 
 		// Change max population
-		user.HumanMax -= int64(payload.Structure.Population)
+		user.PopulationCap -= int64(payload.Structure.PopulationCap)
 
 		// Money back when destruct
 		// TODO: calculate upgrade money
@@ -362,11 +362,11 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	// Check chunk resource status(such as human not enough)
 	human_needed := 0
 	for _, b := range chunk.Structures {
-		human_needed += -b.Human
+		human_needed += -b.Population
 	}
 
 	// TODO: Change building status when human not enough
-	log.Println(human_needed, chunk.Human)
+	log.Println(human_needed, chunk.Population)
 
 	// Write data into database if no world error happened
 	mHandler.playerDB.Put(payload.Username, user)

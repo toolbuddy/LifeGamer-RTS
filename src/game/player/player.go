@@ -6,9 +6,9 @@ import (
 )
 
 type Player struct {
-	Human     int64
-	HumanMax  int64
-	HumanRate int64
+	Population     int64
+	PopulationCap  int64
+	PopulationRate int64
 
 	Money     int64
 	MoneyRate int64
@@ -26,10 +26,10 @@ type Player struct {
 func (player *Player) Update() {
 	current := time.Now().Unix()
 	player.Money += player.MoneyRate * (current - player.UpdateTime)
-	player.Human = func() int64 {
-		result := player.Human + player.HumanRate*(current-player.UpdateTime)
-		if result > player.HumanMax {
-			result = player.HumanMax
+	player.Population = func() int64 {
+		result := player.Population + player.PopulationRate*(current-player.UpdateTime)
+		if result > player.PopulationCap {
+			result = player.PopulationCap
 		}
 
 		return result

@@ -20,10 +20,10 @@ type Structure struct {
 	Name   string // Name for frontend printing
 	Status SStatus
 
-	Human      int // + for provide, - for occupy
-	Money      int // + for produce, - for consume
-	Power      int // + for generate, - for consume
-	Population int // How many population can increase for player
+	Population    int // + for provide, - for occupy
+	Money         int // + for produce, - for consume
+	Power         int // + for generate, - for consume
+	PopulationCap int // How many population can increase for player
 
 	Cost int // Money required for build
 	// Upgrade cost: 1->2 = 1 * Cost

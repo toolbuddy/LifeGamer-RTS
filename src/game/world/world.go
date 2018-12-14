@@ -29,7 +29,7 @@ type Chunk struct {
 	Size       util.Size
 	Blocks     [][]Block
 	Structures []Structure
-	Human      int64 // Human on this chunk
+	Population int64 // Population on this chunk
 	UpdateTime int64 // Unix time
 }
 
@@ -62,15 +62,15 @@ func NewChunk(pos util.Point) *Chunk {
 
 func loadStructures(filename string) (err error) {
 	type strProto struct {
-		ID       int
-		Name     string
-		Terrain  []int
-		Cost     int
-		Power    int
-		Human    int
-		Money    int
-		Size     uint
-		MaxLevel int
+		ID         int
+		Name       string
+		Terrain    []int
+		Cost       int
+		Power      int
+		Population int
+		Money      int
+		Size       uint
+		MaxLevel   int
 	}
 
 	protoList := struct {
@@ -90,7 +90,7 @@ func loadStructures(filename string) (err error) {
 		structure.Name = s.Name
 		structure.Cost = s.Cost
 		structure.Power = s.Power
-		structure.Human = s.Human
+		structure.Population = s.Population
 		structure.Money = s.Money
 		structure.Level = 1
 		structure.MaxLevel = s.MaxLevel
