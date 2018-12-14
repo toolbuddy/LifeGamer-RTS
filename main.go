@@ -29,7 +29,7 @@ func main() {
 			config.IDHostname: *hostname,
 			config.IDWdbPath:  *wdbPath,
 			config.IDPdbPath:  *pdbPath,
-        })
+		})
 
 	server, _ := comm.NewWsServer()
 	server.Start(9999)
@@ -38,9 +38,5 @@ func main() {
 	engine.LoadTerrain(util.Point{-25, -25}, util.Point{24, 24}, "map.json")
 	engine.Start()
 
-	//reader := bufio.NewReader(os.Stdin)
-	//for {
-	//reader.ReadString('\n')
-	//}
 	select {}
 }

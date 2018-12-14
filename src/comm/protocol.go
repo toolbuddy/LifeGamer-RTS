@@ -1,9 +1,9 @@
 package comm
 
 import (
-    "fmt"
-    "encoding/json"
-    "os"
+	"encoding/json"
+	"fmt"
+	"os"
 )
 
 /*
@@ -15,103 +15,103 @@ import (
 type MsgType uint
 
 const (
-    // Request from client
-    LoginRequest MsgType = iota
-    PlayerDataRequest
-    MapDataRequest
-    LogoutRequest
-    BuildRequest
+	// Request from client
+	LoginRequest MsgType = iota
+	PlayerDataRequest
+	MapDataRequest
+	LogoutRequest
+	BuildRequest
 
-    // Request from server
-    HomePointRequest
+	// Request from server
+	HomePointRequest
 
-    // Response from server
-    LoginResponse
-    PlayerDataResponse
-    MapDataResponse
-    MinimapDataResponse
+	// Response from server
+	LoginResponse
+	PlayerDataResponse
+	MapDataResponse
+	MinimapDataResponse
 
-    // Response from client
-    HomePointResponse
+	// Response from client
+	HomePointResponse
 )
 
 var msg_type = []string{
-    // Request from client
-    "LoginRequest",
-    "PlayerDataRequest",
-    "MapDataRequest",
-    "LogoutRequest",
-    "BuildRequest",
+	// Request from client
+	"LoginRequest",
+	"PlayerDataRequest",
+	"MapDataRequest",
+	"LogoutRequest",
+	"BuildRequest",
 
-    // Request from server
-    "HomePointRequest",
+	// Request from server
+	"HomePointRequest",
 
-    // Response from server
-    "LoginResponse",
-    "PlayerDataResponse",
-    "MapDataResponse",
-    "MinimapDataResponse",
+	// Response from server
+	"LoginResponse",
+	"PlayerDataResponse",
+	"MapDataResponse",
+	"MinimapDataResponse",
 
-    // Response from client
-    "HomePointResponse",
+	// Response from client
+	"HomePointResponse",
 }
 
 func (mtype MsgType) String() string {
-    return msg_type[mtype]
+	return msg_type[mtype]
 }
 
 // Call this function to generate message type json file for client
 func MsgType2Json() (err error) {
-    m := make(map[string]MsgType)
+	m := make(map[string]MsgType)
 
-    for i, s := range msg_type {
-        m[s] = MsgType(i)
-    }
+	for i, s := range msg_type {
+		m[s] = MsgType(i)
+	}
 
-    b, err := json.Marshal(m)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
+	b, err := json.Marshal(m)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 
-    fp, err := os.OpenFile("message_type.json", os.O_CREATE | os.O_WRONLY, 0644)
-    if err != nil {
-        fmt.Fprintln(os.Stderr, err)
-        return
-    }
+	fp, err := os.OpenFile("message_type.json", os.O_CREATE|os.O_WRONLY, 0644)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		return
+	}
 
-    defer fp.Close()
+	defer fp.Close()
 
-    fmt.Fprintln(fp, string(b))
+	fmt.Fprintln(fp, string(b))
 
-    return
+	return
 }
 
 // Sending Method
 type SendingMethod int
 
 const (
-    SendToClient SendingMethod = iota
-    SendToUser
-    Broadcast
+	SendToClient SendingMethod = iota
+	SendToUser
+	Broadcast
 )
 
 // Data with client id and username wrapped
 type MessageWrapper struct {
-    Cid         int
-    Username    string
-    SendTo      SendingMethod
-    Data        []byte
+	Cid      int
+	Username string
+	SendTo   SendingMethod
+	Data     []byte
 }
 
 // Data container for server/client communication
 type Payload struct {
-    Msg_type MsgType
-    Username string
+	Msg_type MsgType
+	Username string
 }
 
 type MessagePayload struct {
-    Payload
-    Avatar  string
-    Message string
+	Payload
+	Avatar  string
+	Message string
 }
