@@ -8,6 +8,7 @@ import (
 	"game/world"
 	"io/ioutil"
 	"log"
+	"path"
 	"sync"
 	"util"
 )
@@ -46,13 +47,12 @@ type GameEngine struct {
 }
 
 func NewGameEngine() (engine *GameEngine, err error) {
-	// TODO: use config to determine DB location
-	playerDB, err := player.NewPlayerDB(config.PdbPath)
+	playerDB, err := player.NewPlayerDB(path.Join(config.DBDir, "pdb"))
 	if err != nil {
 		return
 	}
 
-	worldDB, err := world.NewWorldDB(config.WdbPath)
+	worldDB, err := world.NewWorldDB(path.Join(config.DBDir, "wdb"))
 	if err != nil {
 		return
 	}
@@ -91,6 +91,8 @@ func NewGameEngine() (engine *GameEngine, err error) {
 }
 
 func (engine GameEngine) Start() {
+	log.Println("[INFO] Starting game engine")
+
 	// initialize minimap data
 	engine.minimap.Size = util.Size{50, 50}
 	engine.minimap.Owner = make([][]string, 50)
@@ -99,20 +101,20 @@ func (engine GameEngine) Start() {
 		for j := 0; j < 50; j++ {
 			chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
 			if err != nil {
-				log.Fatalln(err)
+				log.Fatalln("[ERROR] Unable to load minimap data")
 			}
 
 			engine.minimap.Owner[i][j] = chk.Owner
 		}
 	}
 
-	log.Println("Starting message handler")
+	log.Println("[INFO] Starting message handler")
 	engine.handler.start()
 
-	log.Println("Starting notifier")
+	log.Println("[INFO] Starting notifier")
 	engine.notifier.start()
 
-	log.Println("Game engine service available")
+	log.Println("[INFO] Game engine service available")
 }
 
 func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename string) (err error) {

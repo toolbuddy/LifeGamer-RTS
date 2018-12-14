@@ -45,7 +45,7 @@ func NewWsServer() (server *WsServer, err error) {
 // Handle client connection
 func (server *WsServer) Start(port int) {
 	// starting
-	log.Println("Starting Websocket server listener")
+	log.Println("[INFO] Starting Websocket server listener")
 
 	// client id generator
 	cid_generator := func() func() int {
@@ -63,7 +63,7 @@ func (server *WsServer) Start(port int) {
 
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
-			log.Println(err)
+			log.Println("[ERROR]", err)
 			return
 		}
 
@@ -75,7 +75,7 @@ func (server *WsServer) Start(port int) {
 		}
 
 		if err := conn.ReadJSON(&login_data); err != nil {
-			log.Println(err)
+			log.Println("[ERROR]", err)
 			conn.Close()
 			return
 		}
@@ -83,7 +83,7 @@ func (server *WsServer) Start(port int) {
 		// Close connection when login failed
 		username, err := Login(login_data.Token)
 		if err != nil {
-			log.Println(err)
+			log.Println("[ERROR]", err)
 			conn.Close()
 			return
 		}
@@ -92,7 +92,7 @@ func (server *WsServer) Start(port int) {
 	})
 
 	// listening
-	log.Println("Websocket server listening on port", port)
+	log.Println("[INFO] Websocket server listening on port", port)
 
 	go http.ListenAndServe(fmt.Sprintf(":%d", port), nil)
 
@@ -121,7 +121,7 @@ func (server *WsServer) Start(port int) {
 					if client, ok := user[cid]; ok {
 						err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
 						if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-							log.Println(err)
+							log.Println("[WARNING]", err)
 						}
 					}
 				}
@@ -130,7 +130,7 @@ func (server *WsServer) Start(port int) {
 					for _, client := range user {
 						err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
 						if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-							log.Println(err)
+							log.Println("[WARNING]", err)
 						}
 					}
 				}
@@ -139,7 +139,7 @@ func (server *WsServer) Start(port int) {
 					for _, client := range user {
 						err := client.WriteMessage(websocket.TextMessage, msg_wrapper.Data)
 						if websocket.IsUnexpectedCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
-							log.Println(err)
+							log.Println("[WARNING]", err)
 						}
 					}
 				}
@@ -166,7 +166,7 @@ func (server *WsServer) Start(port int) {
 				server.clientsLock.Unlock()
 
 				user[cid] = client
-				log.Printf("Ws: New client for user %s connected (cid: %v)", username, cid)
+				log.Printf("[INFO] New client of user %s connected (cid: %v)", username, cid)
 
 				// Start goroutine to handle massage from each websocket client ( WsClient read )
 				go func() {
@@ -190,7 +190,7 @@ func (server *WsServer) Start(port int) {
 
 				b, err := json.Marshal(Payload{LoginRequest, username})
 				if err != nil {
-					log.Println(err)
+					log.Println("[WARNING]", err)
 					continue
 				}
 
@@ -207,7 +207,7 @@ func (server *WsServer) Start(port int) {
 						b, err := json.Marshal(Payload{LogoutRequest, username})
 						if err != nil {
 							server.clientsLock.Unlock()
-							log.Println(err)
+							log.Println("[WARNING]", err)
 							continue
 						}
 

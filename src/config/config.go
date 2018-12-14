@@ -10,19 +10,18 @@ import (
 
 const (
 	IDHostname = "hostname"
-	IDWdbPath  = "wdb_path"
-	IDPdbPath  = "pdb_path"
+	IDDBDir    = "db_dir"
+	IDLogDir   = "log_dir"
 )
 
 var (
 	Hostname string
-	WdbPath  string
-	PdbPath  string
+	DBDir    string
+	LogDir   string
 )
 
 // Initialize : Load default config and override with data
 func Initialize(path string, data map[string]interface{}) {
-
 	// Read default configuration
 	v, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -41,29 +40,29 @@ func Initialize(path string, data map[string]interface{}) {
 	// Override config (if specified)
 	apply(data)
 
-	log.Printf("Using config from %v:"+strings.Repeat("\n\t%v : %v", 3)+"\n",
+	log.Printf("[INFO] Using config from %v:"+strings.Repeat("\n\t%v : %v", 3)+"\n",
 		path,
 		IDHostname, Hostname,
-		IDWdbPath, WdbPath,
-		IDPdbPath, PdbPath)
+		IDDBDir, DBDir,
+		IDLogDir, LogDir)
 
 	// Verify config
-	if containsEmpty(Hostname, WdbPath, PdbPath) {
+	if containsEmpty(Hostname, DBDir, LogDir) {
 		log.Fatalln("[ERROR] Invalid Configuration")
 	}
 
 }
 
 func apply(data map[string]interface{}) {
-	for k := range data {
-		if s := fmt.Sprintf("%v", data[k]); s != "" {
+	for k, v := range data {
+		if s := fmt.Sprintf("%v", v); s != "" {
 			switch k {
 			case IDHostname:
 				Hostname = s
-			case IDWdbPath:
-				WdbPath = s
-			case IDPdbPath:
-				PdbPath = s
+			case IDDBDir:
+				DBDir = s
+			case IDLogDir:
+				LogDir = s
 			}
 		}
 	}

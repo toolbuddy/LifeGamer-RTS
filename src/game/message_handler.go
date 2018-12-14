@@ -46,7 +46,7 @@ func (mHandler MessageHandler) start() {
 			var payload comm.Payload
 
 			if err := json.Unmarshal(msg_wrapper.Data, &payload); err != nil {
-				log.Println(err)
+				log.Println("[WARNING]", "Payload unmarshal failed.")
 				continue
 			}
 
@@ -65,7 +65,7 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
 
 	b, err := json.Marshal(payload)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 
@@ -91,7 +91,7 @@ func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
 		// Username not found! Send HomePointRequest to client
 		b, err := json.Marshal(comm.Payload{comm.HomePointRequest, username})
 		if err != nil {
-			log.Println(err)
+			log.Println("[ERROR]", err)
 		}
 
 		msg := request
@@ -124,7 +124,7 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 	}
 
 	if err := json.Unmarshal(request.Data, &payload); err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 
@@ -136,7 +136,7 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 			chunk = *world.NewChunk(pos)
 
 			if err := mHandler.worldDB.Put(pos.String(), chunk); err != nil {
-				log.Println(err)
+				log.Println("[ERROR]", err)
 			}
 		}
 
@@ -148,7 +148,7 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 
 	b, err := json.Marshal(map_data)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 
@@ -202,31 +202,31 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	var err error
 
 	if err = json.Unmarshal(request.Data, &payload); err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 
-	log.Printf("world: %s request %s at chunk (%s), pos (%s)", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
+	log.Printf("[INFO] %s request %s at chunk (%s), pos (%s)", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
 
 	// Retrieve info from struct definition
 	world.CompleteStructure(&payload.Structure)
 
 	user, err := mHandler.playerDB.Get(payload.Username)
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 	user.Update()
 
 	chunk, err := mHandler.worldDB.Get(payload.Structure.Chunk.String())
 	if err != nil {
-		log.Println(err)
+		log.Println("[ERROR]", err)
 		return
 	}
 
 	// Check user's permission
 	if payload.Username != chunk.Owner {
-		log.Println("User do not own the chunk.")
+		//log.Println("[INFO] User do not own the chunk.")
 		return
 	}
 
@@ -323,17 +323,16 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 	}
 
 	if err := json.Unmarshal(request.Data, &payload); err != nil {
-		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Payload unmarshal failed.")
+		log.Println("[ERROR]", err)
 		return
 	}
 
 	username := request.Username
-	log.Println(payload)
 
 	// chunk operation
 	chunk, err := mHandler.worldDB.Get(payload.Pos.String())
 	if err != nil {
-		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to get chunk ID "+payload.Pos.String()+".")
+		log.Println("[ERROR]", err)
 		return
 	}
 
@@ -345,7 +344,7 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 	}
 
 	if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
-		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to put chunk ID "+payload.Pos.String()+".")
+		log.Println("[ERROR]", err)
 		return
 	}
 
@@ -371,9 +370,7 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 	player_data.UpdateTime = time.Now().Unix()
 
 	if err := mHandler.playerDB.Put(username, player_data); err != nil {
-		log.Printf("[%s][%s] %s", "ERROR", "onOccupyRequest", "Unable to put player ID "+username+".")
+		log.Println("[ERROR]", err)
 		return
 	}
-
-	log.Println(player_data.Territory)
 }

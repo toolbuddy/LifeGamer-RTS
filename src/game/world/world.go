@@ -42,7 +42,7 @@ func init() {
 	StructMap = make(map[int]Structure)
 	err := loadStructures("src/game/world/structures.json")
 	if err != nil {
-		log.Println(err)
+		log.Fatalln("[ERROR] Unable to load structure data")
 	}
 }
 

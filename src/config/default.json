@@ -1,5 +1,5 @@
 {
-    "pdb_path": "/tmp/gdb/pdb",
-    "wdb_path": "/tmp/gdb/wdb",
-    "hostname": "https://pd2a.imslab.org"
+    "hostname": "https://pd2a.imslab.org",
+    "db_dir":   "/tmp/gdb",
+    "log_dir":  "/tmp/log"
 }

@@ -67,7 +67,8 @@ func (notifier Notifier) start() {
 		for key := range notifier.owner_changed {
 			chk, err := notifier.worldDB.Get(key)
 			if err != nil {
-				log.Println(err)
+				log.Println("[WARNING]", err)
+				continue
 			}
 
 			var x, y int
@@ -80,8 +81,8 @@ func (notifier Notifier) start() {
 
 			b, err := json.Marshal(payload)
 			if err != nil {
-				log.Println(err)
-				return
+				log.Println("[WARNING]", err)
+				continue
 			}
 
 			msg := comm.MessageWrapper{SendTo: comm.Broadcast, Data: b}
@@ -117,7 +118,7 @@ func (notifier Notifier) mapDataUpdate(pos util.Point) {
 		for _, pos := range poss {
 			chunk, err := notifier.worldDB.Get(pos.String())
 			if err != nil {
-				log.Println(err)
+				log.Println("[WARNING]", err)
 			}
 
 			chunks = append(chunks, chunk)
@@ -129,7 +130,7 @@ func (notifier Notifier) mapDataUpdate(pos util.Point) {
 
 		b, err := json.Marshal(map_data)
 		if err != nil {
-			log.Println(err)
+			log.Println("[WARNING]", err)
 			continue
 		}
 
@@ -144,7 +145,7 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 
 	player_data, err := db.Get(username)
 	if err != nil {
-		log.Println(err)
+		log.Println("[WARNING]", err)
 		return
 	}
 
@@ -154,13 +155,17 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 	for m := range user_ch {
 		if m == "update" {
 			player_data, err = db.Get(username)
+			if err != nil {
+				log.Println("[WARNING]", err)
+				continue
+			}
 		}
 
 		player_data.Update()
 
 		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse, username}, player_data})
 		if err != nil {
-			log.Println(err)
+			log.Println("[WARNING]", err)
 			continue
 		}
 
@@ -169,5 +174,5 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 		mbus.Write("ws", msg)
 	}
 
-	log.Printf("Notifier: the data update of player \"%s\" has stopped", username)
+	log.Printf("[INFO] the data update of player \"%s\" has stopped", username)
 }
