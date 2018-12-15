@@ -10,6 +10,7 @@ import (
 	"log"
 	"path"
 	"sync"
+	"time"
 	"util"
 )
 
@@ -147,17 +148,21 @@ func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename st
 }
 
 // TODO: Maybe world lock & user lock needed to prevent something modify DB during this
-func (engine GameEngine) UpdateChunk(key string) (err error) {
-	chunk, err := engine.worldDB.Get(key)
+func UpdateChunk(db GameDB, key string) (err error) {
+	var username string
+	var owner player.Player
+	currentTime := time.Now().Unix()
+
+	chunk, err := db.worldDB.Get(key)
 	if err != nil {
 		return
 	}
 
-	need_update := func() []int {
-		var res []int
-		for index, s := range chunk.Structures {
-			if s.UpdateTime < chunk.UpdateTime {
-				res = append(res, index)
+	need_update := func() []world.Structure {
+		var res []world.Structure
+		for _, s := range chunk.Structures {
+			if s.UpdateTime+s.BuildTime <= currentTime {
+				res = append(res, s)
 			}
 		}
 
@@ -165,7 +170,63 @@ func (engine GameEngine) UpdateChunk(key string) (err error) {
 	}()
 
 	if len(need_update) > 0 {
-		// Retrieve user data
+		username = chunk.Owner
+		owner, err = db.playerDB.Get(username)
+		if err != nil {
+			return
+		}
+
+		for _, s := range need_update {
+			index, _ := world.GetStructure(chunk, s)
+			chunk.Structures[index].UpdateTime = currentTime
+			chunk.Structures[index].BuildTime = 0
+			switch s.Status {
+			case world.Building:
+				// Calcutate power
+				if s.Power > 0 {
+					owner.PowerMax += int64(s.Power)
+				} else {
+					owner.Power += int64(-(s.Power))
+				}
+
+				// Calculate money
+				owner.MoneyRate += int64(s.Money)
+
+				// Calculate population
+				owner.PopulationCap += int64(s.PopulationCap)
+
+				if s.Population > 0 {
+					owner.PopulationRate += int64(s.Population)
+				}
+				chunk.Structures[index].Status = world.Running
+			case world.Destructing:
+				err = world.DestructStructure(&chunk, s)
+				if err != nil {
+					return
+				}
+
+				if s.Power > 0 {
+					owner.PowerMax -= int64(s.Power)
+				} else {
+					owner.Power -= int64(-(s.Power))
+				}
+
+				if s.Population > 0 {
+					owner.PopulationRate -= int64(s.Population)
+				}
+
+				// Change max population
+				owner.PopulationCap -= int64(s.PopulationCap)
+
+				// Money back when destruct
+				// TODO: calculate upgrade money
+				owner.Money += int64(s.Cost) / 2
+				owner.MoneyRate -= int64(s.Money)
+			}
+		}
+
+		db.playerDB.Put(username, owner)
+		db.worldDB.Put(chunk.Key(), chunk)
 	}
 
 	return nil

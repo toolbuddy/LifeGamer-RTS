@@ -71,6 +71,7 @@ func loadStructures(filename string) (err error) {
 		Money      int
 		Size       uint
 		MaxLevel   int
+		BuildTime  int64
 	}
 
 	protoList := struct {
@@ -94,6 +95,7 @@ func loadStructures(filename string) (err error) {
 		structure.Money = s.Money
 		structure.Level = 1
 		structure.MaxLevel = s.MaxLevel
+		structure.BuildTime = s.BuildTime
 
 		for _, t := range s.Terrain {
 			structure.Terrain |= t
@@ -156,46 +158,10 @@ func CompleteStructure(str *Structure) {
 	str.Pos = pos
 }
 
-func BuildStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err error) {
-	target_chunk, err = wdb.Get(str.Chunk.String())
-
-	// WorldDB get error
-	if err != nil {
-		return
-	}
-
-	// Check available space & terrain
-	if ok, err := target_chunk.Accepts(str); !ok {
-		return target_chunk, err
-	}
-
-	// Check finished, build the structure
-
-	// Set map occupied
-	for _, block := range util.InSizeRange(str.Pos, str.Size) {
-		target_chunk.Blocks[block.X][block.Y].Empty = false
-	}
-
-	str.Status = Building
-	str.UpdateTime = time.Now().Unix()
-
-	// Add structure
-	target_chunk.Structures = append(target_chunk.Structures, str)
-
-	return
-}
-
-func DestuctStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err error) {
-	target_chunk, err = wdb.Get(str.Chunk.String())
-
-	// WorldDB get error
-	if err != nil {
-		return
-	}
-
+func GetStructure(chunk Chunk, str Structure) (str_index int, err error) {
 	// Check structure exists, returns -1 if not found
-	index := func() int {
-		for index, s := range target_chunk.Structures {
+	str_index = func() int {
+		for index, s := range chunk.Structures {
 			if s.Pos == str.Pos && s.ID == str.ID {
 				return index
 			}
@@ -203,20 +169,48 @@ func DestuctStructure(wdb *WorldDB, str Structure) (target_chunk Chunk, err erro
 		return -1
 	}()
 
-	if index == -1 {
+	if str_index == -1 {
 		err = errors.New("Structure not found")
+	}
+
+	return
+}
+
+func BuildStructure(chunk *Chunk, str Structure) (err error) {
+	// Check available space & terrain
+	if ok, err := chunk.Accepts(str); !ok {
+		return err
+	}
+
+	// Check finished, build the structure
+
+	// Set map occupied
+	for _, block := range util.InSizeRange(str.Pos, str.Size) {
+		chunk.Blocks[block.X][block.Y].Empty = false
+	}
+
+	str.UpdateTime = time.Now().Unix()
+
+	// Add structure
+	chunk.Structures = append(chunk.Structures, str)
+
+	return
+}
+
+func DestructStructure(chunk *Chunk, str Structure) (err error) {
+	index, err := GetStructure(*chunk, str)
+
+	if err != nil {
 		return
 	}
 
-	// Check finished, destroy the structure
-
 	// Set map free
 	for _, block := range util.InSizeRange(str.Pos, str.Size) {
-		target_chunk.Blocks[block.X][block.Y].Empty = true
+		chunk.Blocks[block.X][block.Y].Empty = true
 	}
 
 	// delete structure
-	target_chunk.Structures = append(target_chunk.Structures[:index], target_chunk.Structures[index+1:]...)
+	chunk.Structures = append(chunk.Structures[:index], chunk.Structures[index+1:]...)
 
 	return
 }

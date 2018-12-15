@@ -8,11 +8,11 @@ import (
 type SStatus string
 
 const (
-	Running    SStatus = "Running"    // Running normally
-	Building   SStatus = "Building"   // building or upgrading
-	Destucting SStatus = "Destucting" // Being destruting by player
-	Destroyed  SStatus = "Destroyed"  // Destroyed after war
-	Halted     SStatus = "Halted"     // Halt because insufficient power
+	Running     SStatus = "Running"     // Running normally
+	Building    SStatus = "Building"    // building or upgrading
+	Destructing SStatus = "Destructing" // Being destruting by player
+	Destroyed   SStatus = "Destroyed"   // Destroyed after war
+	Halted      SStatus = "Halted"      // Halt because insufficient power
 )
 
 type Structure struct {
@@ -20,10 +20,11 @@ type Structure struct {
 	Name   string // Name for frontend printing
 	Status SStatus
 
-	Population    int // + for provide, - for occupy
-	Money         int // + for produce, - for consume
-	Power         int // + for generate, - for consume
-	PopulationCap int // How many population can increase for player
+	Population    int   // + for provide, - for occupy
+	Money         int   // + for produce, - for consume
+	Power         int   // + for generate, - for consume
+	PopulationCap int   // How many population can increase for player
+	BuildTime     int64 // How many time before building finish
 
 	Cost int // Money required for build
 	// Upgrade cost: 1->2 = 1 * Cost

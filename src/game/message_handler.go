@@ -226,7 +226,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 
 	// Check user's permission
 	if payload.Username != chunk.Owner {
-		//log.Println("[INFO] User do not own the chunk.")
+		log.Println("[INFO] User do not own the chunk.")
 		return
 	}
 
@@ -251,47 +251,27 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	// Check world status & perform action
 	switch payload.Action {
 	case Build:
-		chunk, err = world.BuildStructure(mHandler.worldDB, payload.Structure)
-
-		// TODO: only power and money part finished
-		if payload.Structure.Power > 0 {
-			user.PowerMax += int64(payload.Structure.Power)
-		} else {
-			user.Power += int64(-(payload.Structure.Power))
-		}
-
-		// Change player's human rate, human occupy is not needed (calculate by chunk)
-		if payload.Structure.Population > 0 {
-			user.PopulationRate += int64(payload.Structure.Population)
-		}
-
-		// Change max population
-		user.PopulationCap += int64(payload.Structure.PopulationCap)
-
+		payload.Structure.Status = world.Building
+		err = world.BuildStructure(&chunk, payload.Structure)
 		user.Money -= int64(payload.Structure.Cost)
-		// TODO: Wait build finished
-		user.MoneyRate += int64(payload.Structure.Money)
+		go func() {
+			select {
+			case <-time.After(time.Duration(world.StructMap[payload.Structure.ID].BuildTime) * time.Second):
+				UpdateChunk(mHandler.GameDB, chunk.Key())
+			}
+		}()
 	//case Upgrade:
 	case Destruct:
-		chunk, err = world.DestuctStructure(mHandler.worldDB, payload.Structure)
-
-		if payload.Structure.Power > 0 {
-			user.PowerMax -= int64(payload.Structure.Power)
-		} else {
-			user.Power -= int64(-(payload.Structure.Power))
-		}
-
-		if payload.Structure.Population > 0 {
-			user.PopulationRate -= int64(payload.Structure.Population)
-		}
-
-		// Change max population
-		user.PopulationCap -= int64(payload.Structure.PopulationCap)
-
-		// Money back when destruct
-		// TODO: calculate upgrade money
-		user.Money += int64(payload.Structure.Cost) / 2
-		user.MoneyRate -= int64(payload.Structure.Money)
+		index, _ := world.GetStructure(chunk, payload.Structure)
+		chunk.Structures[index].Status = world.Destructing
+		chunk.Structures[index].BuildTime = world.StructMap[payload.Structure.ID].BuildTime
+		chunk.Structures[index].UpdateTime = time.Now().Unix()
+		go func() {
+			select {
+			case <-time.After(time.Duration(world.StructMap[payload.Structure.ID].BuildTime) * time.Second):
+				UpdateChunk(mHandler.GameDB, chunk.Key())
+			}
+		}()
 		//case Repair:
 		//case Restart:
 	}

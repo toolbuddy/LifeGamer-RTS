@@ -10,7 +10,8 @@
             "Money" : -1500,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 2,
@@ -22,7 +23,8 @@
             "Money" : -500,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 3,
@@ -34,7 +36,8 @@
             "Money" : -300,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 4,
@@ -46,7 +49,8 @@
             "Money" : -500,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 5,
@@ -58,7 +62,8 @@
             "Money" : -200,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 6,
@@ -70,7 +75,8 @@
             "Money" : -300,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 7,
@@ -82,7 +88,8 @@
             "Money" : -6000,
             "PopulationCap": 0,
             "Size" : 8,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 10,
@@ -94,7 +101,8 @@
             "Money" : 5000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 11,
@@ -106,7 +114,8 @@
             "Money" : 2000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 12,
@@ -118,7 +127,8 @@
             "Money" : 2000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 13,
@@ -130,7 +140,8 @@
             "Money" : 7000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 14,
@@ -142,7 +153,8 @@
             "Money" : 2000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 15,
@@ -154,7 +166,8 @@
             "Money" : 1000,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         },
         {
             "ID" : 21,
@@ -166,7 +179,8 @@
             "Money" : 0,
             "PopulationCap": 0,
             "Size" : 2,
-            "MaxLevel": 1
+            "MaxLevel": 1,
+            "BuildTime": 10
         },
         {
             "ID" : 22,
@@ -178,7 +192,8 @@
             "Money" : 0,
             "PopulationCap": 0,
             "Size" : 4,
-            "MaxLevel": 1
+            "MaxLevel": 1,
+            "BuildTime": 10
         },
         {
             "ID" : 23,
@@ -190,7 +205,8 @@
             "Money" : 0,
             "PopulationCap": 0,
             "Size" : 8,
-            "MaxLevel": 1
+            "MaxLevel": 1,
+            "BuildTime": 10
         },
         {
             "ID" : 24,
@@ -202,7 +218,8 @@
             "Money" : -500,
             "PopulationCap": 0,
             "Size" : 2,
-            "MaxLevel": 5
+            "MaxLevel": 5,
+            "BuildTime": 10
         }
     ]
 }
