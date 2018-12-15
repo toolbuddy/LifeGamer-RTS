@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path"
+	"strconv"
 	"time"
 	"util"
 )
@@ -47,7 +48,7 @@ func main() {
 		return
 	}
 
-	log_path := path.Join(config.LogDir, time.Now().String()+".log")
+	log_path := path.Join(config.LogDir, "gamelog_"+strconv.Itoa(int(time.Now().Unix()))+".log")
 	fileWriter, err := os.OpenFile(log_path, os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		log.Fatalln("[ERROR] Unable to create log file")
