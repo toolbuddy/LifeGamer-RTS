@@ -287,6 +287,14 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	//case Upgrade:
 	case Destruct:
 		index, _ := world.GetStructure(chunk, payload.Structure)
+
+		// Set properties to 0 to prevent minus after destruction
+		if chunk.Structures[index].Status == world.Building {
+			chunk.Structures[index].Power = 0
+			chunk.Structures[index].Money = 0
+			chunk.Structures[index].Population = 0
+			chunk.Structures[index].PopulationCap = 0
+		}
 		chunk.Structures[index].Status = world.Destructing
 		chunk.Structures[index].BuildTime = world.StructMap[payload.Structure.ID].BuildTime
 		chunk.Structures[index].UpdateTime = time.Now().Unix()
