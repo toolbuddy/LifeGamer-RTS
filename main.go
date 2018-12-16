@@ -57,12 +57,12 @@ func main() {
 
 	log.SetOutput(io.MultiWriter(os.Stdout, fileWriter))
 
-	server, _ := comm.NewWsServer()
-	server.Start(9999)
-
 	engine, _ := game.NewGameEngine()
 	engine.LoadTerrain(util.Point{-25, -25}, util.Point{24, 24}, "map.json")
 	engine.Start()
+
+	server, _ := comm.NewWsServer()
+	server.Start(9999)
 
 	select {}
 }

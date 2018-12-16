@@ -94,7 +94,7 @@ func NewGameEngine() (engine *GameEngine, err error) {
 func (engine GameEngine) Start() {
 	log.Println("[INFO] Starting game engine")
 
-	// initialize minimap data
+	// initialize minimap data & run timer for unfinished structure operation
 	engine.minimap.Size = util.Size{50, 50}
 	engine.minimap.Owner = make([][]string, 50)
 	for i := 0; i < 50; i++ {
@@ -102,10 +102,27 @@ func (engine GameEngine) Start() {
 		for j := 0; j < 50; j++ {
 			chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
 			if err != nil {
-				log.Fatalln("[ERROR] Unable to load minimap data")
+				log.Fatalf("[ERROR] Map data corrupted at %s\n", util.Point{i - 25, j - 25}.String())
 			}
 
 			engine.minimap.Owner[i][j] = chk.Owner
+
+			// Unfinished structures
+			for _, s := range chk.Structures {
+				currentTime := time.Now().Unix()
+				if s.Status == world.Building || s.Status == world.Destructing {
+					if s.UpdateTime+s.BuildTime <= currentTime {
+						go UpdateChunk(engine.GameDB, chk.Key())
+					} else {
+						go func() {
+							select {
+							case <-time.After(time.Duration(s.BuildTime-(currentTime-s.UpdateTime)) * time.Second):
+								UpdateChunk(engine.GameDB, chk.Key())
+							}
+						}()
+					}
+				}
+			}
 		}
 	}
 
