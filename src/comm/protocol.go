@@ -103,3 +103,8 @@ type MessagePayload struct {
 	Avatar  string
 	Message string
 }
+
+type LogoutPayload struct {
+	Payload
+	RemoveUser bool
+}

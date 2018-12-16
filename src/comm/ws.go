@@ -203,16 +203,14 @@ func (server *WsServer) Start(port int) {
 				if user, ok := server.clients[username]; ok {
 					delete(user, cid)
 
-					if len(user) == 0 {
-						b, err := json.Marshal(Payload{LogoutRequest, username})
-						if err != nil {
-							server.clientsLock.Unlock()
-							log.Println("[WARNING]", err)
-							continue
-						}
-
-						server.mbus.Write("game", MessageWrapper{Cid: cid, Username: username, Data: b})
+					b, err := json.Marshal(LogoutPayload{Payload{LogoutRequest, username}, len(user) == 0})
+					if err != nil {
+						server.clientsLock.Unlock()
+						log.Println("[WARNING]", err)
+						continue
 					}
+
+					server.mbus.Write("game", MessageWrapper{Cid: cid, Username: username, Data: b})
 				}
 				server.clientsLock.Unlock()
 			}

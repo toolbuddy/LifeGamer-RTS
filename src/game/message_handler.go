@@ -83,6 +83,26 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
 	mHandler.playerLock.Unlock()
 }
 
+func (mHandler MessageHandler) removeFromChunkWatchingList(client_info ClientInfo) {
+	mHandler.clientLock.RLock()
+	if poss, ok := mHandler.client2Chunks[client_info]; ok {
+		for _, pos := range poss {
+			// Remove client from chunk watching list
+			mHandler.chunkLock.Lock()
+			if infos, ok := mHandler.chunk2Clients[pos]; ok {
+				for i, info := range infos {
+					if info == client_info {
+						mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
+						break
+					}
+				}
+			}
+			mHandler.chunkLock.Unlock()
+		}
+	}
+	mHandler.clientLock.RUnlock()
+}
+
 func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
 	username := request.Username
 
@@ -108,13 +128,33 @@ func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
 func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 	username := request.Username
 
-	mHandler.playerLock.Lock()
-	// Delete user if user exist
-	if user_ch, ok := mHandler.online_players[username]; ok {
-		close(user_ch)
-		delete(mHandler.online_players, username)
+	var payload struct {
+		RemoveUser bool
 	}
-	mHandler.playerLock.Unlock()
+
+	if err := json.Unmarshal(request.Data, &payload); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	if payload.RemoveUser {
+		// Delete user if user exist
+		mHandler.playerLock.Lock()
+		if user_ch, ok := mHandler.online_players[username]; ok {
+			close(user_ch)
+			delete(mHandler.online_players, username)
+		}
+		mHandler.playerLock.Unlock()
+	}
+
+	client_info := ClientInfo{request.Cid, request.Username}
+
+	// Remove client from chunk watching list
+	mHandler.removeFromChunkWatchingList(client_info)
+
+	mHandler.clientLock.Lock()
+	delete(mHandler.client2Chunks, client_info)
+	mHandler.clientLock.Unlock()
 }
 
 func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
@@ -160,24 +200,8 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 	if mHandler.mbus.Write("ws", msg) {
 		client_info := ClientInfo{request.Cid, request.Username}
 
-		// Get chunks where this client was watching
-		mHandler.clientLock.RLock()
-		if poss, ok := mHandler.client2Chunks[client_info]; ok {
-			for _, pos := range poss {
-				// Remove client from chunk watching list
-				mHandler.chunkLock.Lock()
-				if infos, ok := mHandler.chunk2Clients[pos]; ok {
-					for i, info := range infos {
-						if info == client_info {
-							mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
-							break
-						}
-					}
-				}
-				mHandler.chunkLock.Unlock()
-			}
-		}
-		mHandler.clientLock.RUnlock()
+		// Remove client from chunk watching list
+		mHandler.removeFromChunkWatchingList(client_info)
 
 		// Update clients who are watching this chunk
 		for _, pos := range payload.ChunkPos {
