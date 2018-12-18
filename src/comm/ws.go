@@ -81,7 +81,7 @@ func (server *WsServer) Start(port int) {
 		}
 
 		// Close connection when login failed
-		username, err := Login(login_data.Token)
+		username, err := Login(login_data.Token, login_data.Token_type)
 		if err != nil {
 			log.Println("[ERROR]", err)
 			conn.Close()

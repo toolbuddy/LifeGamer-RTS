@@ -16,7 +16,7 @@ type gitlab_user struct {
 }
 
 // Login with GitLab token
-func Login(token string) (string, error) {
+func Login(token string, token_type string) (string, error) {
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", config.Hostname+"/gitlab/api/v4/user", nil)
@@ -25,8 +25,9 @@ func Login(token string) (string, error) {
 	}
 
 	// Set access token type
-	// TODO: Support Private token and Access token
-	req.Header.Set("Private-Token", token)
+	q := req.URL.Query()
+	q.Add(token_type, token)
+	req.URL.RawQuery = q.Encode()
 
 	rsp, err := client.Do(req)
 	if err != nil {
