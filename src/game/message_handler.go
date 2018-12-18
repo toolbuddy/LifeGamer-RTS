@@ -348,20 +348,29 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 		return
 	}
 
+	// check if player exist
+	player_data, err := mHandler.playerDB.Get(username)
+
 	if chunk.Owner != "" {
 		// Chunk is occupied
+		if err != nil {
+			// Username not found! Send HomePointRequest to client
+			b, err := json.Marshal(comm.Payload{comm.HomePointRequest, username})
+			if err != nil {
+				log.Println("[ERROR]", err)
+			}
+
+			msg := request
+			msg.SendTo = comm.SendToClient
+			msg.Data = b
+
+			mHandler.mbus.Write("ws", msg)
+		}
 		return
 	} else {
 		chunk.Owner = username
 	}
 
-	if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
-		log.Println("[ERROR]", err)
-		return
-	}
-
-	// player operation
-	player_data, err := mHandler.playerDB.Get(username)
 	if err != nil {
 		// Username not found! Create new player in PlayerDB
 		// Set population provided by home chunk
@@ -378,6 +387,12 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 		defer mHandler.startPlayerDataUpdate(ClientInfo{request.Cid, username})
 	}
 
+	if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	// player operation
 	player_data.Territory = append(player_data.Territory, payload.Pos)
 	player_data.UpdateTime = time.Now().Unix()
 
