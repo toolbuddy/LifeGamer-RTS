@@ -95,16 +95,23 @@ type MessageWrapper struct {
 // Data container for server/client communication
 type Payload struct {
 	Msg_type MsgType
-	Username string
 }
 
-type MessagePayload struct {
+type UsernamePayload struct {
 	Payload
-	Avatar  string
-	Message string
+
+	Username string
 }
 
 type LogoutPayload struct {
 	Payload
+
 	RemoveUser bool
+}
+
+type MessagePayload struct {
+	Payload
+
+	Avatar  string
+	Message string
 }

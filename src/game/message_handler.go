@@ -83,33 +83,13 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
 	mHandler.playerLock.Unlock()
 }
 
-func (mHandler MessageHandler) removeFromChunkWatchingList(client_info ClientInfo) {
-	mHandler.clientLock.RLock()
-	if poss, ok := mHandler.client2Chunks[client_info]; ok {
-		for _, pos := range poss {
-			// Remove client from chunk watching list
-			mHandler.chunkLock.Lock()
-			if infos, ok := mHandler.chunk2Clients[pos]; ok {
-				for i, info := range infos {
-					if info == client_info {
-						mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
-						break
-					}
-				}
-			}
-			mHandler.chunkLock.Unlock()
-		}
-	}
-	mHandler.clientLock.RUnlock()
-}
-
 func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
 	username := request.Username
 
 	_, err := mHandler.playerDB.Get(username)
 	if err != nil {
 		// Username not found! Send HomePointRequest to client
-		b, err := json.Marshal(comm.Payload{comm.HomePointRequest, username})
+		b, err := json.Marshal(comm.Payload{comm.HomePointRequest})
 		if err != nil {
 			log.Println("[ERROR]", err)
 		}
@@ -126,11 +106,8 @@ func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
 }
 
 func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
-	username := request.Username
-
-	var payload struct {
-		RemoveUser bool
-	}
+	var username string = request.Username
+	var payload comm.LogoutPayload
 
 	if err := json.Unmarshal(request.Data, &payload); err != nil {
 		log.Println("[ERROR]", err)
@@ -138,8 +115,8 @@ func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 	}
 
 	if payload.RemoveUser {
-		// Delete user if user exist
 		mHandler.playerLock.Lock()
+		// Delete user if user exist
 		if user_ch, ok := mHandler.online_players[username]; ok {
 			close(user_ch)
 			delete(mHandler.online_players, username)
@@ -147,10 +124,25 @@ func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 		mHandler.playerLock.Unlock()
 	}
 
+	// Remove client from chunk watching list
 	client_info := ClientInfo{request.Cid, request.Username}
 
-	// Remove client from chunk watching list
-	mHandler.removeFromChunkWatchingList(client_info)
+	mHandler.clientLock.RLock()
+	if poss, ok := mHandler.client2Chunks[client_info]; ok {
+		for _, pos := range poss {
+			mHandler.chunkLock.Lock()
+			if infos, ok := mHandler.chunk2Clients[pos]; ok {
+				for i, info := range infos {
+					if info == client_info {
+						mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
+						break
+					}
+				}
+			}
+			mHandler.chunkLock.Unlock()
+		}
+	}
+	mHandler.clientLock.RUnlock()
 
 	mHandler.clientLock.Lock()
 	delete(mHandler.client2Chunks, client_info)
@@ -200,8 +192,24 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 	if mHandler.mbus.Write("ws", msg) {
 		client_info := ClientInfo{request.Cid, request.Username}
 
-		// Remove client from chunk watching list
-		mHandler.removeFromChunkWatchingList(client_info)
+		// Get chunks where this client was watching
+		mHandler.clientLock.RLock()
+		if poss, ok := mHandler.client2Chunks[client_info]; ok {
+			for _, pos := range poss {
+				// Remove client from chunk watching list
+				mHandler.chunkLock.Lock()
+				if infos, ok := mHandler.chunk2Clients[pos]; ok {
+					for i, info := range infos {
+						if info == client_info {
+							mHandler.chunk2Clients[pos] = append(infos[:i], infos[i+1:]...)
+							break
+						}
+					}
+				}
+				mHandler.chunkLock.Unlock()
+			}
+		}
+		mHandler.clientLock.RUnlock()
 
 		// Update clients who are watching this chunk
 		for _, pos := range payload.ChunkPos {
@@ -221,7 +229,7 @@ func (mHandler MessageHandler) onMapDataRequest(request comm.MessageWrapper) {
 	}
 }
 
-func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
+func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	var payload BuildingPayload
 	var err error
 
@@ -230,12 +238,12 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 		return
 	}
 
-	log.Printf("[INFO] %s request %s at chunk (%s), pos (%s)", payload.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
+	log.Printf("[INFO] %s request %s at chunk (%s), pos (%s)", request.Username, string(payload.Action), payload.Structure.Chunk.String(), payload.Structure.Pos.String())
 
 	// Retrieve info from struct definition
 	world.CompleteStructure(&payload.Structure)
 
-	user, err := mHandler.playerDB.Get(payload.Username)
+	user, err := mHandler.playerDB.Get(request.Username)
 	if err != nil {
 		log.Println("[ERROR]", err)
 		return
@@ -249,7 +257,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	}
 
 	// Check user's permission
-	if payload.Username != chunk.Owner {
+	if request.Username != chunk.Owner {
 		log.Println("[INFO] User do not own the chunk.")
 		return
 	}
@@ -295,6 +303,7 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 			chunk.Structures[index].Population = 0
 			chunk.Structures[index].PopulationCap = 0
 		}
+
 		chunk.Structures[index].Status = world.Destructing
 		chunk.Structures[index].BuildTime = world.StructMap[payload.Structure.ID].BuildTime
 		chunk.Structures[index].UpdateTime = time.Now().Unix()
@@ -321,10 +330,10 @@ func (mHandler *MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	}
 
 	// TODO: Change building status when human not enough
-	log.Println(human_needed, chunk.Population)
+	//log.Println(human_needed, chunk.Population)
 
 	// Write data into database if no world error happened
-	mHandler.playerDB.Put(payload.Username, user)
+	mHandler.playerDB.Put(request.Username, user)
 	mHandler.worldDB.Put(chunk.Key(), chunk)
 }
 
@@ -355,7 +364,7 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 		// Chunk is occupied
 		if err != nil {
 			// Username not found! Send HomePointRequest to client
-			b, err := json.Marshal(comm.Payload{comm.HomePointRequest, username})
+			b, err := json.Marshal(comm.Payload{comm.HomePointRequest})
 			if err != nil {
 				log.Println("[ERROR]", err)
 			}

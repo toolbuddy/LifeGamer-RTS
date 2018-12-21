@@ -125,7 +125,7 @@ func (notifier Notifier) mapDataUpdate(pos util.Point) {
 		}
 
 		// send data to client
-		payload := comm.Payload{Msg_type: comm.MapDataResponse, Username: info.username}
+		payload := comm.Payload{Msg_type: comm.MapDataResponse}
 		map_data := MapDataPayload{payload, chunks}
 
 		b, err := json.Marshal(map_data)
@@ -163,7 +163,7 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 
 		player_data.Update()
 
-		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse, username}, player_data})
+		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse}, player_data})
 		if err != nil {
 			log.Println("[WARNING]", err)
 			continue
