@@ -320,5 +320,13 @@ func Battle(group_atk, group_def int) (remain_atk, remain_def int) {
 	remain_atk = int(f_atk - f_def*def_ratio)
 	remain_def = int(f_def - f_atk*atk_ratio)
 
+	if remain_atk < 0 {
+		remain_atk = 0
+	}
+
+	if remain_def < 0 {
+		remain_def = 0
+	}
+
 	return
 }
