@@ -8,6 +8,7 @@ import (
 	"game/world"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"path"
 	"sync"
 	"time"
@@ -304,4 +305,20 @@ func UpdateChunk(db GameDB, username string, key string) (err error) {
 	}
 
 	return nil
+}
+
+func Battle(group_atk, group_def int) (remain_atk, remain_def int) {
+	// Starting group : 1000 vs 1000
+	// Average result :    0 vs  300
+
+	// Formula : base_damage + random * damage_buff
+	def_ratio := 0.11 + rand.Float64()*0.02
+	atk_ratio := 0.10 + rand.Float64()*0.02
+
+	f_atk, f_def := float64(group_atk), float64(group_def)
+
+	remain_atk = int(f_atk - f_def*def_ratio)
+	remain_def = int(f_def - f_atk*atk_ratio)
+
+	return
 }
