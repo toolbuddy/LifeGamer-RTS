@@ -27,6 +27,7 @@ const (
 	MinimapDataResponse
 	HomePointResponse
 	OccupyRequest
+	Message
 )
 
 var msg_type = []string{
@@ -42,6 +43,7 @@ var msg_type = []string{
 	"MinimapDataResponse",
 	"HomePointResponse",
 	"OccupyRequest",
+	"Message",
 }
 
 func (mtype MsgType) String() string {

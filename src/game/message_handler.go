@@ -32,10 +32,11 @@ func NewMessageHandler(gameDB GameDB, common_data CommonData, mbus *comm.MBusNod
 
 	mHandler.onMessage[comm.LoginRequest] = mHandler.onLoginRequest
 	mHandler.onMessage[comm.LogoutRequest] = mHandler.onLogoutRequest
-	mHandler.onMessage[comm.HomePointResponse] = mHandler.onOccupyRequest
+	mHandler.onMessage[comm.HomePointResponse] = mHandler.onHomePointResponse
 	mHandler.onMessage[comm.MapDataRequest] = mHandler.onMapDataRequest
 	mHandler.onMessage[comm.BuildRequest] = mHandler.onBuildRequest
 	mHandler.onMessage[comm.OccupyRequest] = mHandler.onOccupyRequest
+	mHandler.onMessage[comm.Message] = mHandler.onBroadcastMessage
 
 	return mHandler
 }
@@ -345,7 +346,90 @@ func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	mHandler.worldDB.Put(chunk.Key(), chunk)
 }
 
+// TODO: deal with long-distance move & boundary check
+// TODO: move delay
 func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
+	var payload struct {
+		comm.Payload
+		From   util.Point
+		To     util.Point
+		Amount int64
+	}
+
+	if err := json.Unmarshal(request.Data, &payload); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	log.Printf("[INFO] %s move %v from (%s) to (%s)", request.Username, payload.Amount, payload.From.String(), payload.To.String())
+
+	username := request.Username
+
+	// chunk operation
+	mHandler.playerDB.Lock(username)
+	defer mHandler.playerDB.Unlock(username)
+
+	mHandler.worldDB.Lock(payload.From.String())
+	defer mHandler.worldDB.Unlock(payload.From.String())
+
+	mHandler.worldDB.Lock(payload.To.String())
+	defer mHandler.worldDB.Unlock(payload.To.String())
+
+	chunk_from, err := mHandler.worldDB.Get(payload.From.String())
+	if err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	chunk_to, err := mHandler.worldDB.Get(payload.To.String())
+	if err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	// check if player exist
+	player_data, err := mHandler.playerDB.Get(username)
+	if err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	if chunk_from.Owner != username {
+		log.Println("[ERROR]", "User do not own the chunk")
+	}
+
+	if chunk_from.Population < payload.Amount {
+		log.Println("[ERROR]", "Source chunk population not enough")
+	}
+
+	if chunk_to.Owner != "" {
+		// TODO: Fighting
+	}
+
+	// Check finished, move minions
+	chunk_from.Population -= payload.Amount
+	chunk_to.Population += payload.Amount
+
+	if err := mHandler.worldDB.Put(chunk_from.Key(), chunk_from); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	if err := mHandler.worldDB.Put(chunk_to.Key(), chunk_to); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+
+	// player operation
+	player_data.Territory = append(player_data.Territory, payload.To)
+
+	if err := mHandler.playerDB.Put(username, player_data); err != nil {
+		log.Println("[ERROR]", err)
+		return
+	}
+}
+
+func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) {
 	var payload struct {
 		comm.Payload
 		Pos util.Point
@@ -423,4 +507,9 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 		log.Println("[ERROR]", err)
 		return
 	}
+}
+
+func (mHandler MessageHandler) onBroadcastMessage(request comm.MessageWrapper) {
+	request.SendTo = comm.Broadcast
+	mHandler.mbus.Write("ws", request)
 }
