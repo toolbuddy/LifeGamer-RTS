@@ -32,7 +32,7 @@ type CommonData struct {
 	owner_changed  chan string
 	minimap        *MinimapData
 
-	playerLock  *sync.RWMutex
+	onlineLock  *sync.RWMutex
 	chunkLock   *sync.RWMutex
 	clientLock  *sync.RWMutex
 	minimapLock *sync.RWMutex
@@ -95,6 +95,7 @@ func (engine GameEngine) Start() {
 	log.Println("[INFO] Starting game engine")
 
 	// initialize minimap data & run timer for unfinished structure operation
+	log.Println("[INFO] Initializing map data")
 	engine.minimap.Size = util.Size{50, 50}
 	engine.minimap.Owner = make([][]string, 50)
 	for i := 0; i < 50; i++ {
@@ -107,17 +108,17 @@ func (engine GameEngine) Start() {
 
 			engine.minimap.Owner[i][j] = chk.Owner
 
-			// Unfinished structures
+			// ->unfinished-> structures
 			for _, s := range chk.Structures {
 				currentTime := time.Now().Unix()
 				if s.Status == world.Building || s.Status == world.Destructing {
 					if s.UpdateTime+s.BuildTime <= currentTime {
-						go UpdateChunk(engine.GameDB, chk.Key())
+						go UpdateChunk(engine.GameDB, chk.Owner, chk.Key())
 					} else {
 						go func() {
 							select {
 							case <-time.After(time.Duration(s.BuildTime-(currentTime-s.UpdateTime)) * time.Second):
-								UpdateChunk(engine.GameDB, chk.Key())
+								UpdateChunk(engine.GameDB, chk.Owner, chk.Key())
 							}
 						}()
 					}
@@ -131,6 +132,15 @@ func (engine GameEngine) Start() {
 
 	log.Println("[INFO] Starting notifier")
 	engine.notifier.start()
+
+	log.Println("[INFO] Starting population updater")
+	go func() {
+		for {
+			// Update every 10 min
+			<-time.After(time.Until(time.Now().Add(time.Second * 2).Truncate(time.Second * 2)))
+			engine.UpdatePopulation()
+		}
+	}()
 
 	log.Println("[INFO] Game engine service available")
 }
@@ -157,21 +167,69 @@ func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename st
 			}
 		}
 
-		chunk.Update()
 		engine.worldDB.Load(p.String(), chunk)
 	}
 
 	return
 }
 
-// TODO: Maybe world lock & user lock needed to prevent something modify DB during this
-func UpdateChunk(db GameDB, key string) (err error) {
-	var username string
+func (engine GameEngine) UpdatePopulation() {
+	iter := engine.playerDB.NewIterator(nil, nil)
+	for iter.Next() {
+		username := string(iter.Key())
+
+		engine.playerDB.Lock(username)
+
+		owner, err := engine.playerDB.Get(username)
+		if err != nil {
+			continue
+		}
+
+		for _, pos := range owner.Territory {
+			engine.worldDB.Lock(pos.String())
+
+			chunk, err := engine.worldDB.Get(pos.String())
+			if err != nil {
+				engine.worldDB.Unlock(pos.String())
+				log.Println("[WARNING]", err)
+				continue
+			}
+
+			if owner.PopulationCap-owner.Population >= chunk.PopulationRate {
+				// Population cap still enough
+				chunk.Population += chunk.PopulationRate
+				owner.Population += chunk.PopulationRate
+			} else {
+				chunk.Population += owner.PopulationCap - owner.Population
+				owner.Population = owner.PopulationCap
+			}
+
+			engine.worldDB.Put(chunk.Key(), chunk)
+			engine.worldDB.Unlock(pos.String())
+		}
+
+		engine.playerDB.Put(username, owner)
+		engine.playerDB.Unlock(username)
+	}
+}
+
+func UpdateChunk(db GameDB, username string, key string) (err error) {
 	var owner player.Player
 	currentTime := time.Now().Unix()
 
+	db.playerDB.Lock(username)
+	defer db.playerDB.Unlock(username)
+
+	db.worldDB.Lock(key)
+	defer db.worldDB.Unlock(key)
+
 	chunk, err := db.worldDB.Get(key)
 	if err != nil {
+		return
+	}
+
+	// Ownership changed
+	if chunk.Owner != username {
 		return
 	}
 
@@ -187,7 +245,6 @@ func UpdateChunk(db GameDB, key string) (err error) {
 	}()
 
 	if len(need_update) > 0 {
-		username = chunk.Owner
 		owner, err = db.playerDB.Get(username)
 		if err != nil {
 			return
@@ -213,7 +270,7 @@ func UpdateChunk(db GameDB, key string) (err error) {
 				owner.PopulationCap += int64(s.PopulationCap)
 
 				if s.Population > 0 {
-					owner.PopulationRate += int64(s.Population)
+					chunk.PopulationRate += int64(s.Population)
 				}
 				chunk.Structures[index].Status = world.Running
 			case world.Destructing:
@@ -229,7 +286,7 @@ func UpdateChunk(db GameDB, key string) (err error) {
 				}
 
 				if s.Population > 0 {
-					owner.PopulationRate -= int64(s.Population)
+					chunk.PopulationRate -= int64(s.Population)
 				}
 
 				// Change max population

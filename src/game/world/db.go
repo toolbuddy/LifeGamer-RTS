@@ -3,10 +3,12 @@ package world
 import (
 	"encoding/json"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 type WorldDB struct {
 	*leveldb.DB
+	mapLock map[string]*sync.Mutex
 
 	Updated chan string // indicate which data have been changed
 }
@@ -17,7 +19,9 @@ func NewWorldDB(path string) (wdb *WorldDB, err error) {
 		return
 	}
 
-	wdb = &WorldDB{db, make(chan string, 256)}
+	mapLock := make(map[string]*sync.Mutex)
+
+	wdb = &WorldDB{db, mapLock, make(chan string, 256)}
 	return
 }
 
@@ -51,6 +55,10 @@ func (wdb WorldDB) Put(key string, value Chunk) (err error) {
 }
 
 func (wdb WorldDB) Load(key string, value Chunk) (err error) {
+	if _, ok := wdb.mapLock[key]; !ok {
+		wdb.mapLock[key] = new(sync.Mutex)
+	}
+
 	b, err := json.Marshal(value)
 	if err != nil {
 		return
@@ -62,4 +70,22 @@ func (wdb WorldDB) Load(key string, value Chunk) (err error) {
 	}
 
 	return
+}
+
+func (wdb WorldDB) Lock(key string) {
+	_, ok := wdb.mapLock[key]
+	if !ok {
+		wdb.mapLock[key] = new(sync.Mutex)
+	}
+
+	wdb.mapLock[key].Lock()
+}
+
+func (wdb WorldDB) Unlock(key string) {
+	_, ok := wdb.mapLock[key]
+	if !ok {
+		wdb.mapLock[key] = new(sync.Mutex)
+	} else {
+		wdb.mapLock[key].Unlock()
+	}
 }

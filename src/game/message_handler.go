@@ -73,14 +73,14 @@ func (mHandler MessageHandler) startPlayerDataUpdate(client_info ClientInfo) {
 	mHandler.mbus.Write("ws", msg)
 
 	// Add user to online list if user not exist, and start player data updating
-	mHandler.playerLock.Lock()
+	mHandler.onlineLock.Lock()
 	if _, ok := mHandler.online_players[username]; !ok {
 		user_ch := make(chan string, 1)
 		mHandler.online_players[username] = user_ch
 
-		go playerDataUpdate(client_info, user_ch, mHandler.mbus, mHandler.playerDB)
+		go playerDataUpdate(client_info, user_ch, mHandler.mbus, mHandler.GameDB)
 	}
-	mHandler.playerLock.Unlock()
+	mHandler.onlineLock.Unlock()
 }
 
 func (mHandler MessageHandler) onLoginRequest(request comm.MessageWrapper) {
@@ -115,13 +115,13 @@ func (mHandler MessageHandler) onLogoutRequest(request comm.MessageWrapper) {
 	}
 
 	if payload.RemoveUser {
-		mHandler.playerLock.Lock()
+		mHandler.onlineLock.Lock()
 		// Delete user if user exist
 		if user_ch, ok := mHandler.online_players[username]; ok {
 			close(user_ch)
 			delete(mHandler.online_players, username)
 		}
-		mHandler.playerLock.Unlock()
+		mHandler.onlineLock.Unlock()
 	}
 
 	// Remove client from chunk watching list
@@ -250,6 +250,12 @@ func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 	}
 	user.Update()
 
+	mHandler.playerDB.Lock(request.Username)
+	defer mHandler.playerDB.Unlock(request.Username)
+
+	mHandler.worldDB.Lock(payload.Structure.Chunk.String())
+	defer mHandler.worldDB.Unlock(payload.Structure.Chunk.String())
+
 	chunk, err := mHandler.worldDB.Get(payload.Structure.Chunk.String())
 	if err != nil {
 		log.Println("[ERROR]", err)
@@ -289,7 +295,7 @@ func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 		go func() {
 			select {
 			case <-time.After(time.Duration(world.StructMap[payload.Structure.ID].BuildTime) * time.Second):
-				UpdateChunk(mHandler.GameDB, chunk.Key())
+				UpdateChunk(mHandler.GameDB, chunk.Owner, chunk.Key())
 			}
 		}()
 	//case Upgrade:
@@ -304,15 +310,17 @@ func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 			chunk.Structures[index].PopulationCap = 0
 		}
 
-		chunk.Structures[index].Status = world.Destructing
-		chunk.Structures[index].BuildTime = world.StructMap[payload.Structure.ID].BuildTime
-		chunk.Structures[index].UpdateTime = time.Now().Unix()
-		go func() {
-			select {
-			case <-time.After(time.Duration(world.StructMap[payload.Structure.ID].BuildTime) * time.Second):
-				UpdateChunk(mHandler.GameDB, chunk.Key())
-			}
-		}()
+		if chunk.Structures[index].Status != world.Destructing {
+			chunk.Structures[index].Status = world.Destructing
+			chunk.Structures[index].BuildTime = world.StructMap[payload.Structure.ID].BuildTime
+			chunk.Structures[index].UpdateTime = time.Now().Unix()
+			go func() {
+				select {
+				case <-time.After(time.Duration(world.StructMap[payload.Structure.ID].BuildTime) * time.Second):
+					UpdateChunk(mHandler.GameDB, chunk.Owner, chunk.Key())
+				}
+			}()
+		}
 		//case Repair:
 		//case Restart:
 	}
@@ -351,6 +359,12 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 	username := request.Username
 
 	// chunk operation
+	mHandler.playerDB.Lock(username)
+	defer mHandler.playerDB.Unlock(username)
+
+	mHandler.worldDB.Lock(payload.Pos.String())
+	defer mHandler.worldDB.Unlock(payload.Pos.String())
+
 	chunk, err := mHandler.worldDB.Get(payload.Pos.String())
 	if err != nil {
 		log.Println("[ERROR]", err)

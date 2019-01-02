@@ -24,13 +24,14 @@ type Block struct {
 }
 
 type Chunk struct {
-	Owner      string
-	Pos        util.Point
-	Size       util.Size
-	Blocks     [][]Block
-	Structures []Structure
-	Population int64 // Population on this chunk
-	UpdateTime int64 // Unix time
+	Owner          string
+	Pos            util.Point
+	Size           util.Size
+	Blocks         [][]Block
+	Structures     []Structure
+	Population     int64 // Population on this chunk
+	PopulationRate int64 // Population Rate of this chunk
+	UpdateTime     int64 // Unix time
 }
 
 // Get db key of chunk
@@ -57,7 +58,7 @@ func NewChunk(pos util.Point) *Chunk {
 		}
 	}
 
-	return &Chunk{"", pos, ChunkSize, blocks, []Structure{}, 0, time.Now().Unix()}
+	return &Chunk{"", pos, ChunkSize, blocks, []Structure{}, 0, 0, time.Now().Unix()}
 }
 
 func loadStructures(filename string) (err error) {
@@ -107,12 +108,6 @@ func loadStructures(filename string) (err error) {
 		StructMap[structure.ID] = structure
 	}
 
-	return
-}
-
-func (chunk *Chunk) Update() {
-	current := time.Now().Unix()
-	chunk.UpdateTime = current
 	return
 }
 

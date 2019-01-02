@@ -3,10 +3,12 @@ package player
 import (
 	"encoding/json"
 	"github.com/syndtr/goleveldb/leveldb"
+	"sync"
 )
 
 type PlayerDB struct {
 	*leveldb.DB
+	playerLock map[string]*sync.Mutex
 
 	Updated chan string // indicate which data have been changed
 }
@@ -17,7 +19,9 @@ func NewPlayerDB(path string) (pdb *PlayerDB, err error) {
 		return
 	}
 
-	pdb = &PlayerDB{db, make(chan string, 256)}
+	playerLock := make(map[string]*sync.Mutex)
+
+	pdb = &PlayerDB{db, playerLock, make(chan string, 256)}
 	return
 }
 
@@ -53,4 +57,22 @@ func (pdb PlayerDB) Put(key string, value Player) (err error) {
 
 	pdb.Updated <- key
 	return
+}
+
+func (pdb PlayerDB) Lock(key string) {
+	_, ok := pdb.playerLock[key]
+	if !ok {
+		pdb.playerLock[key] = new(sync.Mutex)
+	}
+
+	pdb.playerLock[key].Lock()
+}
+
+func (pdb PlayerDB) Unlock(key string) {
+	_, ok := pdb.playerLock[key]
+	if !ok {
+		pdb.playerLock[key] = new(sync.Mutex)
+	} else {
+		pdb.playerLock[key].Unlock()
+	}
 }

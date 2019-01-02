@@ -4,7 +4,6 @@ import (
 	"comm"
 	"encoding/json"
 	"fmt"
-	"game/player"
 	"game/world"
 	"log"
 	"time"
@@ -33,23 +32,25 @@ func NewNotifier(gameDB GameDB, common_data CommonData, mbus *comm.MBusNode) (no
 func (notifier Notifier) start() {
 	// start ticker
 	go func() {
+		// Align update tick to second
+		<-time.After(time.Until(time.Now().Add(time.Second).Truncate(time.Second)))
 		for range time.NewTicker(time.Second).C {
-			notifier.playerLock.RLock()
+			notifier.onlineLock.RLock()
 			for _, user_ch := range notifier.online_players {
 				user_ch <- ""
 			}
-			notifier.playerLock.RUnlock()
+			notifier.onlineLock.RUnlock()
 		}
 	}()
 
 	// player DB update checking
 	go func() {
 		for username := range notifier.playerDB.Updated {
-			notifier.playerLock.RLock()
+			notifier.onlineLock.RLock()
 			if user_ch, ok := notifier.online_players[username]; ok {
 				user_ch <- "update"
 			}
-			notifier.playerLock.RUnlock()
+			notifier.onlineLock.RUnlock()
 		}
 	}()
 
@@ -140,10 +141,10 @@ func (notifier Notifier) mapDataUpdate(pos util.Point) {
 	}
 }
 
-func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusNode, db *player.PlayerDB) {
+func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.MBusNode, db GameDB) {
 	username := client_info.username
 
-	player_data, err := db.Get(username)
+	player_data, err := db.playerDB.Get(username)
 	if err != nil {
 		log.Println("[WARNING]", err)
 		return
@@ -154,16 +155,14 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 
 	for m := range user_ch {
 		if m == "update" {
-			player_data, err = db.Get(username)
+			player_data, err = db.playerDB.Get(username)
 			if err != nil {
 				log.Println("[WARNING]", err)
 				continue
 			}
 		}
 
-		player_data.Update()
-
-		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse}, player_data})
+		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse}, player_data.GetStatus()})
 		if err != nil {
 			log.Println("[WARNING]", err)
 			continue
