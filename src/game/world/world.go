@@ -63,16 +63,17 @@ func NewChunk(pos util.Point) *Chunk {
 
 func loadStructures(filename string) (err error) {
 	type strProto struct {
-		ID         int
-		Name       string
-		Terrain    []int
-		Cost       int
-		Power      int
-		Population int
-		Money      int
-		Size       uint
-		MaxLevel   int
-		BuildTime  int64
+		ID            int
+		Name          string
+		Terrain       []int
+		Cost          int
+		Power         int
+		Population    int
+		Money         int
+		PopulationCap int
+		Size          uint
+		MaxLevel      int
+		BuildTime     int64
 	}
 
 	protoList := struct {
@@ -94,6 +95,7 @@ func loadStructures(filename string) (err error) {
 		structure.Power = s.Power
 		structure.Population = s.Population
 		structure.Money = s.Money
+		structure.PopulationCap = s.PopulationCap
 		structure.Level = 1
 		structure.MaxLevel = s.MaxLevel
 		structure.BuildTime = s.BuildTime
