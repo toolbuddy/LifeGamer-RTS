@@ -307,25 +307,26 @@ func UpdateChunk(db GameDB, username string, key string) (err error) {
 	return nil
 }
 
-func Battle(group_atk, group_def int) (remain_atk, remain_def int) {
-	// Starting group : 1000 vs 1000
-	// Average result :    0 vs  300
+func Battle(troopAtk, troopDef int) (remainAtk, remainDef int) {
+	// 1.60 : 1 = Def win
+	// 1.80 : 1 = Atk win
 
 	// Formula : base_damage + random * damage_buff
-	def_ratio := 0.11 + rand.Float64()*0.02
-	atk_ratio := 0.10 + rand.Float64()*0.02
+	defRatio := 0.14 + rand.Float64()*0.02 // 0.14 ~ 0.16
+	atkRatio := 0.04 + rand.Float64()*0.02 // 0.04 ~ 0.06
 
-	f_atk, f_def := float64(group_atk), float64(group_def)
+	troopAtkF, troopDefF := float64(troopAtk), float64(troopDef)
 
-	remain_atk = int(f_atk - f_def*def_ratio)
-	remain_def = int(f_def - f_atk*atk_ratio)
+	// Remaining number may vary
+	remainAtk = int(troopAtkF - troopDefF*defRatio)
+	remainDef = int(troopDefF - troopAtkF*atkRatio)
 
-	if remain_atk < 0 {
-		remain_atk = 0
+	if remainAtk < 0 {
+		remainAtk = 0
 	}
 
-	if remain_def < 0 {
-		remain_def = 0
+	if remainDef < 0 {
+		remainDef = 0
 	}
 
 	return
