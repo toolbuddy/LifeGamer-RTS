@@ -494,6 +494,10 @@ func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) 
 		defer mHandler.startPlayerDataUpdate(ClientInfo{request.Cid, username})
 	}
 
+	// Provide initial population
+	player_data.Population = 10
+	chunk.Population = 10
+
 	if err := mHandler.worldDB.Put(chunk.Key(), chunk); err != nil {
 		log.Println("[ERROR]", err)
 		return
