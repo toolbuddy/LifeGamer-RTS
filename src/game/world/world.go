@@ -142,6 +142,16 @@ func (chunk Chunk) Accepts(str Structure) (ok bool, err error) {
 	}
 }
 
+func (chunk Chunk) PopulationNeed() (needed int64) {
+	for _, str := range chunk.Structures {
+		if str.Population < 0 {
+			needed += int64(-str.Population)
+		}
+	}
+
+	return
+}
+
 // Fill remained part of struct from client
 func CompleteStructure(str *Structure) {
 	chunk := str.Chunk

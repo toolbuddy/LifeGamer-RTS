@@ -92,10 +92,10 @@ func (notifier Notifier) start() {
 	}()
 }
 
-func (notifier Notifier) mapDataUpdate(pos util.Point) {
+func (notifier Notifier) mapDataUpdate(position util.Point) {
 	// read which clients are watching this chunk
 	notifier.chunkLock.RLock()
-	infos, ok := notifier.chunk2Clients[pos]
+	infos, ok := notifier.chunk2Clients[position]
 	if !ok {
 		notifier.chunkLock.RUnlock()
 		return
@@ -120,6 +120,22 @@ func (notifier Notifier) mapDataUpdate(pos util.Point) {
 			chunk, err := notifier.worldDB.Get(pos.String())
 			if err != nil {
 				log.Println("[WARNING]", err)
+				continue
+			}
+
+			if pos == position {
+				// Population not enough, halt this chunk and cancel current message
+				if chunk.Population < chunk.PopulationNeed() {
+					HaltChunk(notifier.GameDB, info.username, pos.String())
+					return
+				}
+
+				// Minimap data update
+				notifier.minimapLock.RLock()
+				if chunk.Owner != notifier.minimap.Owner[pos.X+25][pos.Y+25] {
+					notifier.owner_changed <- pos.String()
+				}
+				notifier.minimapLock.RUnlock()
 			}
 
 			chunks = append(chunks, chunk)
@@ -162,15 +178,22 @@ func playerDataUpdate(client_info ClientInfo, user_ch <-chan string, mbus *comm.
 			}
 		}
 
-		b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse}, player_data.GetStatus()})
-		if err != nil {
-			log.Println("[WARNING]", err)
-			continue
+		current_status := player_data.GetStatus()
+
+		if current_status.Money < 0 || current_status.Power > current_status.PowerMax {
+			// No enough money or power for player
+			HaltPlayer(db, username)
+		} else {
+			b, err := json.Marshal(PlayerDataPayload{comm.Payload{comm.PlayerDataResponse}, current_status})
+			if err != nil {
+				log.Println("[WARNING]", err)
+				continue
+			}
+
+			msg := comm.MessageWrapper{client_info.cid, username, comm.SendToUser, b}
+
+			mbus.Write("ws", msg)
 		}
-
-		msg := comm.MessageWrapper{client_info.cid, username, comm.SendToUser, b}
-
-		mbus.Write("ws", msg)
 	}
 
 	log.Printf("[INFO] the data update of player \"%s\" has stopped", username)

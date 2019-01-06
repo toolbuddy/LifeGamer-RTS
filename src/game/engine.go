@@ -94,6 +94,7 @@ func NewGameEngine() (engine *GameEngine, err error) {
 
 func (engine GameEngine) Start() {
 	log.Println("[INFO] Starting game engine")
+	rand.Seed(time.Now().UTC().UnixNano())
 
 	// initialize minimap data & run timer for unfinished structure operation
 	log.Println("[INFO] Initializing map data")
@@ -160,11 +161,11 @@ func (engine GameEngine) LoadTerrain(from util.Point, to util.Point, filename st
 			chunk = *world.NewChunk(p)
 		}
 
-		for i := 0; uint(i) < world.ChunkSize.H; i++ {
-			for j := 0; uint(j) < world.ChunkSize.W; j++ {
+		for i := 0; uint(i) < world.ChunkSize.W; i++ {
+			for j := 0; uint(j) < world.ChunkSize.H; j++ {
 				real_X := (p.X+int(world.WorldSize.W)/2)*int(world.ChunkSize.W) + i
 				real_Y := (p.Y+int(world.WorldSize.H)/2)*int(world.ChunkSize.H) + j
-				chunk.Blocks[i][j].Terrain = mapdata.Unit[real_Y][real_X]
+				chunk.Blocks[i][j].Terrain = mapdata.Unit[real_X][real_Y]
 			}
 		}
 
@@ -286,6 +287,8 @@ func UpdateChunk(db GameDB, username string, key string) (err error) {
 					owner.Power -= int64(-(s.Power))
 				}
 
+				owner.MoneyRate -= int64(s.Money)
+
 				if s.Population > 0 {
 					chunk.PopulationRate -= int64(s.Population)
 				}
@@ -296,7 +299,6 @@ func UpdateChunk(db GameDB, username string, key string) (err error) {
 				// Money back when destruct
 				// TODO: calculate upgrade money
 				owner.Money += int64(s.Cost) / 2
-				owner.MoneyRate -= int64(s.Money)
 			}
 		}
 
@@ -305,6 +307,105 @@ func UpdateChunk(db GameDB, username string, key string) (err error) {
 	}
 
 	return nil
+}
+
+// TODO: return error
+func HaltPlayer(db GameDB, username string) {
+	db.playerDB.Lock(username)
+
+	owner, err := db.playerDB.Get(username)
+	if err != nil {
+		return
+	}
+
+	owner.Update()
+
+	if owner.Money < 0 {
+		owner.Money = 0
+	}
+
+	for _, pos := range owner.Territory {
+		db.worldDB.Lock(pos.String())
+
+		chunk, err := db.worldDB.Get(pos.String())
+		if err != nil {
+			db.worldDB.Unlock(pos.String())
+			log.Println("[WARNING]", err)
+			continue
+		}
+
+		for s_index, str := range chunk.Structures {
+			if str.Status == world.Running {
+				chunk.Structures[s_index].Status = world.Halted
+
+				// Stop functions
+				if str.Power > 0 {
+					owner.PowerMax -= int64(str.Power)
+				} else {
+					owner.Power -= int64(-(str.Power))
+				}
+
+				owner.MoneyRate -= int64(str.Money)
+
+				if str.Population > 0 {
+					chunk.PopulationRate -= int64(str.Population)
+				}
+
+				owner.PopulationCap -= int64(str.PopulationCap)
+			}
+		}
+
+		db.worldDB.Put(chunk.Key(), chunk)
+		db.worldDB.Unlock(pos.String())
+	}
+
+	db.playerDB.Put(username, owner)
+	db.playerDB.Unlock(username)
+}
+
+// TODO: return error
+func HaltChunk(db GameDB, username string, key string) {
+	db.playerDB.Lock(username)
+	defer db.playerDB.Unlock(username)
+
+	owner, err := db.playerDB.Get(username)
+	if err != nil {
+		return
+	}
+
+	owner.Update()
+
+	db.worldDB.Lock(key)
+	defer db.worldDB.Unlock(key)
+
+	chunk, err := db.worldDB.Get(key)
+	if err != nil {
+		log.Println("[WARNING]", err)
+	}
+
+	for s_index, str := range chunk.Structures {
+		if str.Status == world.Running {
+			chunk.Structures[s_index].Status = world.Halted
+
+			// Stop functions
+			if str.Power > 0 {
+				owner.PowerMax -= int64(str.Power)
+			} else {
+				owner.Power -= int64(-(str.Power))
+			}
+
+			owner.MoneyRate -= int64(str.Money)
+
+			if str.Population > 0 {
+				chunk.PopulationRate -= int64(str.Population)
+			}
+
+			owner.PopulationCap -= int64(str.PopulationCap)
+		}
+	}
+
+	db.worldDB.Put(chunk.Key(), chunk)
+	db.playerDB.Put(username, owner)
 }
 
 func Battle(troopAtk, troopDef int) (remainAtk, remainDef int) {

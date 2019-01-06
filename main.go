@@ -58,7 +58,7 @@ func main() {
 	log.SetOutput(io.MultiWriter(os.Stdout, fileWriter))
 
 	engine, _ := game.NewGameEngine()
-	engine.LoadTerrain(util.Point{-25, -25}, util.Point{24, 24}, "map.json")
+	engine.LoadTerrain(util.Point{-25, -25}, util.Point{24, 24}, "map_river.json")
 	engine.Start()
 
 	server, _ := comm.NewWsServer()
