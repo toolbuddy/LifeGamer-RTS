@@ -365,6 +365,7 @@ func HaltPlayer(db GameDB, username string) {
 
 // TODO: return error
 func HaltChunk(db GameDB, username string, key string) {
+	log.Println("halt", key)
 	db.playerDB.Lock(username)
 	defer db.playerDB.Unlock(username)
 
@@ -383,9 +384,12 @@ func HaltChunk(db GameDB, username string, key string) {
 		log.Println("[WARNING]", err)
 	}
 
+	var status_changed bool = false
+
 	for s_index, str := range chunk.Structures {
 		if str.Status == world.Running {
 			chunk.Structures[s_index].Status = world.Halted
+			status_changed = true
 
 			// Stop functions
 			if str.Power > 0 {
@@ -404,8 +408,11 @@ func HaltChunk(db GameDB, username string, key string) {
 		}
 	}
 
-	db.worldDB.Put(chunk.Key(), chunk)
-	db.playerDB.Put(username, owner)
+	// Only write DB on status changed to prevent halt loop
+	if status_changed {
+		db.worldDB.Put(chunk.Key(), chunk)
+		db.playerDB.Put(username, owner)
+	}
 }
 
 func Battle(troopAtk, troopDef int) (remainAtk, remainDef int) {

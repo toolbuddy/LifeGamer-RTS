@@ -126,8 +126,7 @@ func (notifier Notifier) mapDataUpdate(position util.Point) {
 			if pos == position {
 				// Population not enough, halt this chunk and cancel current message
 				if chunk.Population < chunk.PopulationNeed() {
-					HaltChunk(notifier.GameDB, info.username, pos.String())
-					return
+					defer HaltChunk(notifier.GameDB, info.username, pos.String())
 				}
 
 				// Minimap data update
