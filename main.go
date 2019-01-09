@@ -16,13 +16,16 @@ import (
 
 func main() {
 	genJson := flag.Bool("genjson", false, "Generate protocal json")
-	configPath := flag.String("config", "src/config/default.json", "Path to configuration file")
 
+	// configure options
+	configPath := flag.String("config", "src/config/default.json", "Path to configuration file")
 	hostname := flag.String("hostname", "", "Login hostname")
 	db_dir := flag.String("db_dir", "", "Directory of game database")
 	log_dir := flag.String("log_dir", "", "Directory of log file")
 
 	verbose := flag.Bool("verbose", false, "Whether to log filename and line number out")
+
+	debuguser := flag.String("user", "", "Skip login and use this username")
 
 	flag.Parse()
 
@@ -33,6 +36,11 @@ func main() {
 
 	if *verbose {
 		log.SetFlags(log.LstdFlags | log.Lshortfile)
+	}
+
+	if *debuguser != "" {
+		log.Printf("Using username %v for debug", *debuguser)
+		os.Setenv("RTSUSER", *debuguser)
 	}
 
 	config.Initialize(*configPath,

@@ -456,7 +456,6 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) {
 	var payload struct {
 		comm.Payload
-		Pos util.Point
 	}
 
 	if err := json.Unmarshal(request.Data, &payload); err != nil {
@@ -466,28 +465,35 @@ func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) 
 
 	username := request.Username
 
-	point := func() {
+	Pos := func() util.Point {
 		mHandler.minimapLock.RLock()
 		defer mHandler.minimapLock.RUnlock()
 		for {
-			point_x := rand.Intn(50) - 25
-			point_y := rand.Intn(50) - 25
+			point_x := rand.Intn(50)
+			point_y := rand.Intn(50)
 			if mHandler.minimap.Owner[point_x][point_y] != "" {
 				continue
 			}
+			switch mHandler.minimap.Terrain[point_x][point_y] {
+			case world.Sea:
+				fallthrough
+			case world.Lava:
+				fallthrough
+			case world.River:
+				continue
+			}
+			return util.Point{point_x - 25, point_y - 25}
 		}
-	}
-
-	log.Println(point)
+	}()
 
 	// chunk operation
 	mHandler.playerDB.Lock(username)
 	defer mHandler.playerDB.Unlock(username)
 
-	mHandler.worldDB.Lock(payload.Pos.String())
-	defer mHandler.worldDB.Unlock(payload.Pos.String())
+	mHandler.worldDB.Lock(Pos.String())
+	defer mHandler.worldDB.Unlock(Pos.String())
 
-	chunk, err := mHandler.worldDB.Get(payload.Pos.String())
+	chunk, err := mHandler.worldDB.Get(Pos.String())
 	if err != nil {
 		log.Println("[ERROR]", err)
 		return
@@ -525,7 +531,7 @@ func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) 
 		player_data.Money = 100000
 		player_data.MoneyRate = 100
 
-		player_data.Home = payload.Pos
+		player_data.Home = Pos
 
 		player_data.Initialized = true
 
@@ -542,7 +548,7 @@ func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) 
 	}
 
 	// player operation
-	player_data.Territory = append(player_data.Territory, payload.Pos)
+	player_data.Territory = append(player_data.Territory, Pos)
 	player_data.UpdateTime = time.Now().Unix()
 
 	if err := mHandler.playerDB.Put(username, player_data); err != nil {

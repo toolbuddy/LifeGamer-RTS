@@ -100,8 +100,10 @@ func (engine GameEngine) Start() {
 	log.Println("[INFO] Initializing map data")
 	engine.minimap.Size = util.Size{50, 50}
 	engine.minimap.Owner = make([][]string, 50)
+	engine.minimap.Terrain = make([][]world.TerrainType, 50)
 	for i := 0; i < 50; i++ {
 		engine.minimap.Owner[i] = make([]string, 50)
+		engine.minimap.Terrain[i] = make([]world.TerrainType, 50)
 		for j := 0; j < 50; j++ {
 			chk, err := engine.worldDB.Get(util.Point{i - 25, j - 25}.String())
 			if err != nil {
@@ -109,6 +111,24 @@ func (engine GameEngine) Start() {
 			}
 
 			engine.minimap.Owner[i][j] = chk.Owner
+
+			// Calculate terrain
+			engine.minimap.Terrain[i][j] = func() world.TerrainType {
+				var t_most world.TerrainType
+				var t_num int
+				t_map := make(map[world.TerrainType]int)
+				for ci := 0; ci < 16; ci++ {
+					for cj := 0; cj < 16; cj++ {
+						t_map[chk.Blocks[ci][cj].Terrain]++
+					}
+				}
+				for k, v := range t_map {
+					if v > t_num {
+						t_most = k
+					}
+				}
+				return t_most
+			}()
 
 			// ->unfinished-> structures
 			for _, s := range chk.Structures {

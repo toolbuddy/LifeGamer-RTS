@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io/ioutil"
 	"net/http"
+	"os"
 
 	"config"
 )
@@ -17,6 +18,10 @@ type gitlab_user struct {
 
 // Login with GitLab token
 func Login(token string, token_type string) (string, error) {
+	if username := os.Getenv("RTSUSER"); username != "" {
+		return username, nil
+	}
+
 	client := &http.Client{}
 
 	req, err := http.NewRequest("GET", config.Hostname+"/gitlab/api/v4/user", nil)
