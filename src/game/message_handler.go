@@ -6,6 +6,7 @@ import (
 	"errors"
 	"game/world"
 	"log"
+	"math/rand"
 	"time"
 	"util"
 )
@@ -323,7 +324,29 @@ func (mHandler MessageHandler) onBuildRequest(request comm.MessageWrapper) {
 			}()
 		}
 		//case Repair:
-		//case Restart:
+	case Restart:
+		index, _ := world.GetStructure(chunk, payload.Structure)
+
+		if chunk.Structures[index].Status == world.Halted {
+			chunk.Structures[index].Status = world.Running
+
+			// Calcutate power
+			if chunk.Structures[index].Power > 0 {
+				user.PowerMax += int64(chunk.Structures[index].Power)
+			} else {
+				user.Power += int64(-(chunk.Structures[index].Power))
+			}
+
+			// Calculate money
+			user.MoneyRate += int64(chunk.Structures[index].Money)
+
+			// Calculate population
+			user.PopulationCap += int64(chunk.Structures[index].PopulationCap)
+
+			if chunk.Structures[index].Population > 0 {
+				chunk.PopulationRate += int64(chunk.Structures[index].Population)
+			}
+		}
 	}
 
 	// Handle world error
@@ -409,6 +432,7 @@ func (mHandler MessageHandler) onOccupyRequest(request comm.MessageWrapper) {
 	// Check finished, move minions
 	chunk_from.Population -= payload.Amount
 	chunk_to.Population += payload.Amount
+	chunk_to.Owner = username
 
 	if err := mHandler.worldDB.Put(chunk_from.Key(), chunk_from); err != nil {
 		log.Println("[ERROR]", err)
@@ -441,6 +465,20 @@ func (mHandler MessageHandler) onHomePointResponse(request comm.MessageWrapper) 
 	}
 
 	username := request.Username
+
+	point := func() {
+		mHandler.minimapLock.RLock()
+		defer mHandler.minimapLock.RUnlock()
+		for {
+			point_x := rand.Intn(50) - 25
+			point_y := rand.Intn(50) - 25
+			if mHandler.minimap.Owner[point_x][point_y] != "" {
+				continue
+			}
+		}
+	}
+
+	log.Println(point)
 
 	// chunk operation
 	mHandler.playerDB.Lock(username)
