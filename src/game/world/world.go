@@ -144,7 +144,7 @@ func (chunk Chunk) Accepts(str Structure) (ok bool, err error) {
 
 func (chunk Chunk) PopulationNeed() (needed int64) {
 	for _, str := range chunk.Structures {
-		if str.Population < 0 {
+		if str.Status == Running && str.Population < 0 {
 			needed += int64(-str.Population)
 		}
 	}
