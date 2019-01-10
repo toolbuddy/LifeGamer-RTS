@@ -19,9 +19,6 @@ func main() {
 
 	// configure options
 	configPath := flag.String("config", "src/config/default.json", "Path to configuration file")
-	hostname := flag.String("hostname", "", "Login hostname")
-	db_dir := flag.String("db_dir", "", "Directory of game database")
-	log_dir := flag.String("log_dir", "", "Directory of log file")
 
 	verbose := flag.Bool("verbose", false, "Whether to log filename and line number out")
 
@@ -43,12 +40,7 @@ func main() {
 		os.Setenv("RTSUSER", *debuguser)
 	}
 
-	config.Initialize(*configPath,
-		map[string]interface{}{
-			config.IDHostname: *hostname,
-			config.IDDBDir:    *db_dir,
-			config.IDLogDir:   *log_dir,
-		})
+	config.Initialize(*configPath)
 
 	// Create log directory
 	if err := os.MkdirAll(config.LogDir, 0755); err != nil {
